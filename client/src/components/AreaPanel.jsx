@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { activeConditions } from '../../../shared/map-conditions.js';
 import { useApi } from '../useApi.js';
 import { PokeImage } from './PokeImage.jsx';
 
@@ -14,6 +15,34 @@ function AreaImage({ section, areaName }) {
   return <img className="area-image" src={section.image} alt={`${areaName}: ${section.name}`} onError={() => setFailedUrl(section.image)} />;
 }
 
+function SlotLegend({ pokemon }) {
+  const used = new Map(pokemon.flatMap((item) => activeConditions(item.conditions)).map((option) => [option.value, option]));
+  if (!used.size) return null;
+  return (
+    <ul className="slot-legend">
+      {[...used.values()].map((option) => <li key={option.value}><span aria-hidden="true">{option.icon}</span> {option.label}</li>)}
+    </ul>
+  );
+}
+
+function PokemonSlot({ pokemon }) {
+  const conditions = activeConditions(pokemon.conditions);
+  const when = conditions.map((option) => option.label).join(', ');
+  return (
+    <Link className="poke-slot" to={`/pokedex/${pokemon.slug}`} title={when ? `${pokemon.name}: ${when}` : pokemon.name}>
+      <PokeImage sources={pokemon.art} alt={pokemon.name} width={52} height={52} />
+      {when && (
+        <>
+          <span className="slot-badges" aria-hidden="true">
+            {conditions.map((option) => <span key={option.value}>{option.icon}</span>)}
+          </span>
+          <span className="visually-hidden">Aparece em: {when}</span>
+        </>
+      )}
+    </Link>
+  );
+}
+
 function PokemonSlots({ section }) {
   const total = Math.max(section.slots, section.pokemon.length);
   const unknown = Array.from({ length: total - section.pokemon.length }, (_, index) => index);
@@ -26,9 +55,7 @@ function PokemonSlots({ section }) {
       <ul className="poke-slots">
         {section.pokemon.map((pokemon) => (
           <li key={pokemon.slug}>
-            <Link className="poke-slot" to={`/pokedex/${pokemon.slug}`} title={pokemon.name}>
-              <PokeImage sources={pokemon.art} alt={pokemon.name} width={52} height={52} />
-            </Link>
+            <PokemonSlot pokemon={pokemon} />
           </li>
         ))}
         {unknown.map((index) => (
@@ -37,6 +64,7 @@ function PokemonSlots({ section }) {
           </li>
         ))}
       </ul>
+      <SlotLegend pokemon={section.pokemon} />
     </section>
   );
 }

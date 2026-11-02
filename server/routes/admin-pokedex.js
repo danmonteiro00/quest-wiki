@@ -489,7 +489,10 @@ adminPokedexRouter.delete('/:slug', async (req, res) => {
     // Tira o Pokemon das areas do mapa, senao a proxima edicao dessas areas seria recusada.
     const { rows } = await tx.query('SELECT slug, content FROM map_area');
     for (const { slug, content } of rows) {
-      const without = (section) => ({ ...section, pokemon: section.pokemon.filter((item) => item !== current.slug) });
+      const without = (section) => {
+        const { [current.slug]: removed, ...conditions } = section.conditions ?? {};
+        return { ...section, pokemon: section.pokemon.filter((item) => item !== current.slug), ...(section.conditions && { conditions }) };
+      };
       const next = { ...without(content), subareas: content.subareas.map(without) };
       if (JSON.stringify(next) === JSON.stringify(content)) continue;
       await tx.query('UPDATE map_area SET content = $2::json, updated_at = now() WHERE slug = $1', [slug, JSON.stringify(next)]);

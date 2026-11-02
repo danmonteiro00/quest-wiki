@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { findArea } from '../../shared/map-areas.js';
+import { CONDITION_GROUPS } from '../../shared/map-conditions.js';
 import { getDb } from '../db.js';
 import { array, fail, imageUrl, isImageUrl, number, text } from '../validate.js';
 import { cacheEditable } from './cache.js';
@@ -9,7 +10,7 @@ export const adminMapRouter = Router();
 
 const DEFAULT_SLOTS = 10;
 
-const emptyContent = () => ({ name: '', image: '', description: '', slots: DEFAULT_SLOTS, pokemon: [], resources: [], subareas: [] });
+const emptyContent = () => ({ name: '', image: '', description: '', slots: DEFAULT_SLOTS, pokemon: [], conditions: {}, resources: [], subareas: [] });
 
 async function readContent(db, slug) {
   const { rows } = await db.query('SELECT content FROM map_area WHERE slug = $1', [slug]);
@@ -31,12 +32,30 @@ function parseResource(raw) {
   return { icon, name, description: text(raw?.description, `Descrição de ${name}`, 2000) };
 }
 
+// So guarda o que foi escolhido, e so para os Pokemon que estao na area.
+function parseConditions(raw, slugs) {
+  const conditions = {};
+  for (const slug of slugs) {
+    const chosen = {};
+    for (const group of CONDITION_GROUPS) {
+      const value = raw?.[slug]?.[group.key];
+      if (!value) continue;
+      if (!group.options.some((option) => option.value === value)) fail(`${group.label} de ${slug}: escolha uma opção da lista`);
+      chosen[group.key] = value;
+    }
+    if (Object.keys(chosen).length) conditions[slug] = chosen;
+  }
+  return conditions;
+}
+
 function parseSection(raw) {
+  const pokemon = [...new Set(array(raw?.pokemon).map(String))];
   return {
     image: imageUrl(raw?.image, 'Imagem'),
     description: text(raw?.description, 'Descrição', 5000),
     slots: number(raw?.slots ?? DEFAULT_SLOTS, 'Quadrados de Pokémon', { min: 1, max: 200 }),
-    pokemon: [...new Set(array(raw?.pokemon).map(String))],
+    pokemon,
+    conditions: parseConditions(raw?.conditions, pokemon),
     resources: array(raw?.resources).map(parseResource),
   };
 }
@@ -86,7 +105,7 @@ mapRouter.get('/:slug', requireArea, async (req, res) => {
   res.json({
     slug: req.area.slug,
     name: content.name || req.area.name,
-    sections: sections.map(({ name, image, description, slots, pokemon, resources }) => ({
+    sections: sections.map(({ name, image, description, slots, pokemon, conditions, resources }) => ({
       name,
       image,
       description,
@@ -95,7 +114,7 @@ mapRouter.get('/:slug', requireArea, async (req, res) => {
       pokemon: pokemon
         .map((slug) => summaries.get(slug))
         .filter(Boolean)
-        .map(({ slug, name: pokemonName, art }) => ({ slug, name: pokemonName, art })),
+        .map(({ slug, name: pokemonName, art }) => ({ slug, name: pokemonName, art, conditions: conditions?.[slug] ?? {} })),
     })),
   });
 });

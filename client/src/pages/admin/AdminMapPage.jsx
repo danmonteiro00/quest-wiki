@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MAP_AREAS, findArea } from '../../../../shared/map-areas.js';
+import { CONDITION_GROUPS } from '../../../../shared/map-conditions.js';
 import { forgetCached, request } from '../../api.js';
 import { ImageField } from '../../components/ImageField.jsx';
 
-const emptySection = () => ({ image: '', description: '', slots: 10, pokemon: [], resources: [] });
+const emptySection = () => ({ image: '', description: '', slots: 10, pokemon: [], conditions: {}, resources: [] });
 
-function PokemonEditor({ slugs, options, onChange }) {
+function PokemonEditor({ slugs, conditions, options, onChange }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState(null);
   const nameOf = (slug) => options.find((pokemon) => pokemon.slug === slug)?.name ?? slug;
+
+  const setCondition = (slug, key, chosen) => {
+    onChange(slugs, { ...conditions, [slug]: { ...conditions[slug], [key]: chosen } });
+  };
+
+  const remove = (slug) => {
+    const { [slug]: removed, ...others } = conditions;
+    onChange(slugs.filter((item) => item !== slug), others);
+  };
 
   const add = () => {
     const term = value.trim().toLowerCase();
@@ -18,7 +28,7 @@ function PokemonEditor({ slugs, options, onChange }) {
     if (!match) return setError(`"${value}" não está na Pokédex`);
     setError(null);
     setValue('');
-    if (!slugs.includes(match.slug)) onChange([...slugs, match.slug]);
+    if (!slugs.includes(match.slug)) onChange([...slugs, match.slug], conditions);
   };
 
   return (
@@ -41,11 +51,24 @@ function PokemonEditor({ slugs, options, onChange }) {
         <button type="button" className="button button--quiet" onClick={add}>Adicionar</button>
       </div>
       {error && <p className="notice notice--error">{error}</p>}
-      <ul className="admin-chips">
+      <ul className="admin-chips admin-chips--rows">
         {slugs.map((slug) => (
           <li key={slug}>
-            {nameOf(slug)}
-            <button type="button" onClick={() => onChange(slugs.filter((item) => item !== slug))} aria-label={`Remover ${nameOf(slug)}`}>×</button>
+            <strong>{nameOf(slug)}</strong>
+            <span className="map-conditions">
+              {CONDITION_GROUPS.map((group) => (
+                <select
+                  key={group.key}
+                  aria-label={`${group.label} de ${nameOf(slug)}`}
+                  value={conditions[slug]?.[group.key] ?? ''}
+                  onChange={(event) => setCondition(slug, group.key, event.target.value)}
+                >
+                  <option value="">{group.any}</option>
+                  {group.options.map((option) => <option key={option.value} value={option.value}>{option.icon} {option.label}</option>)}
+                </select>
+              ))}
+            </span>
+            <button type="button" onClick={() => remove(slug)} aria-label={`Remover ${nameOf(slug)}`}>×</button>
           </li>
         ))}
       </ul>
@@ -102,7 +125,12 @@ function SectionEditor({ section, options, onChange }) {
         Total de quadrados de Pokémon
         <input type="number" min="1" max="200" value={section.slots} onChange={(event) => set('slots', event.target.value)} />
       </label>
-      <PokemonEditor slugs={section.pokemon} options={options} onChange={(pokemon) => set('pokemon', pokemon)} />
+      <PokemonEditor
+        slugs={section.pokemon}
+        conditions={section.conditions ?? {}}
+        options={options}
+        onChange={(pokemon, conditions) => onChange({ ...section, pokemon, conditions })}
+      />
       <h2>Recursos e objetos</h2>
       <ResourceEditor resources={section.resources} onChange={(resources) => set('resources', resources)} />
     </div>

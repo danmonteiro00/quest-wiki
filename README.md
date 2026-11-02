@@ -69,7 +69,7 @@ Cada sorteio é um dado: as faces de todos os resultados precisam somar o númer
 
 A seção `/mapa` usa a imagem [client/public/map.jpg](client/public/map.jpg). As posições das cidades, dos quadrados das rotas e das linhas pontilhadas estão em [shared/map-areas.js](shared/map-areas.js), em pixels dessa imagem. Se a imagem mudar, essas posições precisam ser medidas de novo.
 
-O conteúdo de cada área fica no banco, na tabela `map_area`, criada sozinha no primeiro acesso. A importação da PokeAPI não mexe nela.
+Cada Pokémon de uma área pode ter estação, clima e horário, listados em [shared/map-conditions.js](shared/map-conditions.js); o quadrado no mapa mostra um ícone para cada um. O conteúdo de cada área fica no banco, na tabela `map_area`, criada sozinha no primeiro acesso. A importação da PokeAPI não mexe nela.
 
 Para editar, entre com uma conta de Admin ou Moderador e abra **Área Administrativa → Mapa**. A imagem pode ser um endereço externo ou um arquivo enviado do computador. Os arquivos enviados são reduzidos no navegador e ficam no banco, na tabela `uploaded_image`.
 
