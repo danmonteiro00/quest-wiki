@@ -29,6 +29,15 @@ function BallIcon() {
   );
 }
 
+function MapIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z" />
+      <path d="M9 4v13.5M15 6.5V20" />
+    </svg>
+  );
+}
+
 function ChevronIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -82,6 +91,10 @@ export function Layout() {
           <NavLink to="/pokedex" className="nav-item" title="Pokédex">
             <BallIcon />
             <span className="nav-label">Pokédex</span>
+          </NavLink>
+          <NavLink to="/mapa" className="nav-item" title="Mapa">
+            <MapIcon />
+            <span className="nav-label">Mapa</span>
           </NavLink>
         </nav>
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import { getDb } from './db.js';
 import { authRouter } from './routes/auth.js';
+import { mapRouter } from './routes/map.js';
 import { pokeapiRouter } from './routes/pokeapi.js';
 import { pokemonRouter } from './routes/pokemon.js';
 
@@ -15,6 +16,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/pokemon', pokemonRouter);
+app.use('/api/map', mapRouter);
 app.use('/api/pokeapi', pokeapiRouter);
 app.use('/api/auth', authRouter);
 

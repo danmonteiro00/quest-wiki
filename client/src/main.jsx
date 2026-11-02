@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration } from 'react-router-dom';
 import { Layout } from './components/Layout.jsx';
+import { MapAdminPage } from './pages/MapAdminPage.jsx';
+import { MapPage } from './pages/MapPage.jsx';
 import { PokedexPage } from './pages/PokedexPage.jsx';
 import { PokemonPage } from './pages/PokemonPage.jsx';
 import './styles.css';
@@ -17,6 +19,9 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/pokedex" replace /> },
       { path: 'pokedex', children: dexRoutes },
+      { path: 'mapa/admin', element: <MapAdminPage /> },
+      // Parametro opcional em uma rota so: trocar de area nao recria o mapa nem perde o zoom.
+      { path: 'mapa/:slug?', element: <MapPage /> },
     ],
   },
   {

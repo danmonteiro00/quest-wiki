@@ -41,12 +41,21 @@ client/src/               site em React
 | --- | --- |
 | `GET /api/pokemon` | Resumo de todos os Pokémon e formas |
 | `GET /api/pokemon/:slug` | Ficha completa (ex.: `rattata-alola`) |
+| `GET /api/map/:slug` | Conteúdo de uma área do mapa (ex.: `rota-05`) |
 | `GET /api/pokeapi` | Endpoints importados e quantidade de recursos |
 | `GET /api/pokeapi/:endpoint/:idOuNome` | Dado original da PokeAPI (ex.: `move/tackle`) |
 
 ## Imagens
 
 As imagens vêm direto do Serebii. Quando a forma não tem arte, a página usa o sprite dela e, em último caso, a imagem da forma base. Os sufixos ficam em [server/import/serebii.js](server/import/serebii.js); depois de mudar algum, rode `npm run db:import`.
+
+## Mapa
+
+A seção `/mapa` usa a imagem [client/public/map.jpg](client/public/map.jpg). As posições das cidades, dos quadrados das rotas e das linhas pontilhadas estão em [shared/map-areas.js](shared/map-areas.js), em pixels dessa imagem. Se a imagem mudar, essas posições precisam ser medidas de novo.
+
+O conteúdo de cada área fica no banco, na tabela `map_area`, criada sozinha no primeiro acesso. A importação da PokeAPI não mexe nela.
+
+Para editar, abra `/mapa/admin` e entre com a senha definida em `ADMIN_PASSWORD`. Sem essa variável, a edição fica desligada. As imagens dos locais e dos recursos são endereços externos, então não ocupam espaço no banco nem no projeto.
 
 ## Mais guias
 

@@ -1,6 +1,7 @@
 const cache = new Map();
 
 export const readCached = (path) => cache.get(path);
+export const forgetCached = (path) => cache.delete(path);
 
 export async function fetchJson(path) {
   if (cache.has(path)) return cache.get(path);
