@@ -29,22 +29,17 @@ for await (const entry of extract) {
 await source;
 
 const exists = async (url) => (await fetch(url, { method: 'HEAD' })).ok;
-const missing = { sprite: [], art: [] };
+const missing = [];
 let cursor = 0;
 
 await Promise.all(Array.from({ length: 4 }, async () => {
   while (cursor < forms.length) {
     const form = forms[cursor++];
-    const { sprite, art } = imagesFor(form);
-    if (sprite.length === 1) {
-      missing.sprite.push(`${form.slug} (sem sufixo)`);
-      continue;
-    }
-    if (!(await exists(sprite[0]))) missing.sprite.push(`${form.slug} -> ${sprite[0].split('/').pop()}`);
-    if (!(await exists(art[0]))) missing.art.push(`${form.slug} -> ${art[0].split('/').pop()}`);
+    const { art } = imagesFor(form);
+    if (art.length === 1) missing.push(`${form.slug} (sem sufixo)`);
+    else if (!(await exists(art[0]))) missing.push(`${form.slug} -> ${art[0].split('/').pop()}`);
   }
 }));
 
 console.log(`Formas verificadas: ${forms.length}`);
-console.log(`Sem sprite (${missing.sprite.length}):\n  ${missing.sprite.sort().join('\n  ')}`);
-console.log(`Sem arte (${missing.art.length}):\n  ${missing.art.sort().join('\n  ')}`);
+console.log(`${forms.length} formas conferidas. Sem arte propria (${missing.length}):\n  ${missing.sort().join('\n  ')}`);

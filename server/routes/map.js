@@ -95,7 +95,7 @@ mapRouter.get('/:slug', requireArea, async (req, res) => {
       pokemon: pokemon
         .map((slug) => summaries.get(slug))
         .filter(Boolean)
-        .map(({ slug, name: pokemonName, sprite }) => ({ slug, name: pokemonName, sprite })),
+        .map(({ slug, name: pokemonName, art }) => ({ slug, name: pokemonName, art })),
     })),
   });
 });

@@ -49,7 +49,6 @@ const emptyForm = () => ({
   heldItems: '',
   evYield: {},
   abilities: [],
-  spriteUrl: '',
   artUrl: '',
   moves: [],
   evolvesFrom: '',
@@ -87,7 +86,6 @@ function toForm(detail) {
     heldItems: (detail.heldItems ?? []).join(', '),
     evYield: Object.fromEntries((detail.evYield ?? []).map((ev) => [ev.stat, ev.value])),
     abilities: detail.abilities ?? [],
-    spriteUrl: blank(detail.sprite?.[0]),
     artUrl: blank(detail.art?.[0]),
     moves: detail.moves?.rows ?? [],
     evolvesFrom: blank(detail.evolvesFrom),
@@ -281,9 +279,8 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
       </label>
 
       <div className="admin-block">
-        <h2>Imagens</h2>
-        <ImageField label="Sprite" value={form.spriteUrl} onChange={set('spriteUrl')} />
-        <ImageField label="Arte" value={form.artUrl} onChange={set('artUrl')} />
+        <h2>Imagem</h2>
+        <ImageField label="Imagem do Pokémon" value={form.artUrl} onChange={set('artUrl')} />
       </div>
 
       <div className="admin-block">

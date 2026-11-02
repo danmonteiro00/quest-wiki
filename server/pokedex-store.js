@@ -1,6 +1,6 @@
 const SUMMARY_FIELDS = [
   'id', 'slug', 'name', 'dexNumber', 'isDefault', 'types', 'stats', 'statTotal',
-  'generation', 'isLegendary', 'isMythical', 'sprite',
+  'generation', 'isLegendary', 'isMythical', 'art',
 ];
 
 const summaryOf = (detail) => Object.fromEntries(SUMMARY_FIELDS.map((field) => [field, detail[field]]));
@@ -34,12 +34,44 @@ export async function deleteEntry(tx, slug) {
   );
 }
 
+// Fichas salvas quando a Pokedex ainda usava sprites: fica so a arte. O sprite so continua
+// se o Admin nao tiver cadastrado outra imagem, ate ele trocar pela arte.
+function withoutSprites(detail) {
+  const { sprite = [], ...rest } = detail;
+  const art = (detail.art ?? []).filter((url) => !url.includes('/pokedex-sv/icon/'));
+  return { ...rest, art: art.length ? art : sprite };
+}
+
+function relinkArt(detail, artOf) {
+  const withArt = ({ sprite, ...item }) => ({ ...item, art: artOf.get(item.slug) ?? [] });
+  const relinkNode = (node) => ({ ...withArt(node), evolvesTo: node.evolvesTo.map(relinkNode) });
+  return {
+    ...detail,
+    varieties: (detail.varieties ?? []).map(withArt),
+    evolution: detail.evolution ? relinkNode(detail.evolution) : null,
+  };
+}
+
 // Chamado por db:import depois de recriar pokedex_entry com os dados da PokeAPI.
 export async function applyOverrides(tx) {
-  const { rows } = await tx.query('SELECT slug, deleted, id, dex_number, summary, detail FROM pokedex_override ORDER BY updated_at');
+  const { rows } = await tx.query('SELECT slug, deleted, id, dex_number, detail FROM pokedex_override ORDER BY updated_at');
+  const kept = [];
   for (const row of rows) {
-    if (row.deleted) await tx.query('DELETE FROM pokedex_entry WHERE slug = $1', [row.slug]);
-    else await upsertEntry(tx, row.id, row.slug, row.dex_number, row.summary, row.detail);
+    if (row.deleted) {
+      await tx.query('DELETE FROM pokedex_entry WHERE slug = $1', [row.slug]);
+      continue;
+    }
+    const detail = withoutSprites(row.detail);
+    kept.push({ ...row, detail });
+    await upsertEntry(tx, row.id, row.slug, row.dex_number, summaryOf(detail), detail);
+  }
+
+  // As fichas guardam copias da imagem das formas e da cadeia; so da para ligar depois de todas gravadas.
+  const { rows: arts } = await tx.query("SELECT slug, summary->'art' AS art FROM pokedex_entry");
+  const artOf = new Map(arts.map((row) => [row.slug, row.art]));
+  for (const row of kept) {
+    const detail = relinkArt(row.detail, artOf);
+    await upsertEntry(tx, row.id, row.slug, row.dex_number, summaryOf(detail), detail);
   }
   return rows.length;
 }

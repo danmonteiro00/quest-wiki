@@ -27,7 +27,7 @@ function PokemonSlots({ section }) {
         {section.pokemon.map((pokemon) => (
           <li key={pokemon.slug}>
             <Link className="poke-slot" to={`/pokedex/${pokemon.slug}`} title={pokemon.name}>
-              <PokeImage sources={pokemon.sprite} alt={pokemon.name} width={52} height={52} />
+              <PokeImage sources={pokemon.art} alt={pokemon.name} width={52} height={52} />
             </Link>
           </li>
         ))}

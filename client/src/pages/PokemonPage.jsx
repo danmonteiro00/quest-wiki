@@ -104,7 +104,7 @@ function EvolutionNode({ node, current }) {
   return (
     <div className="evo-branch">
       <Link to={siblingLink(node.slug)} className={`evo-pokemon${node.slug === current ? ' is-current' : ''}`} aria-current={node.slug === current ? 'page' : undefined}>
-        <PokeImage sources={node.sprite} alt="" width={72} height={72} />
+        <PokeImage sources={node.art} alt="" width={72} height={72} />
         <span>{node.name}</span>
         <small>{formatDex(node.dexNumber)}</small>
       </Link>
@@ -302,7 +302,7 @@ export function PokemonPage() {
             {pokemon.varieties.map((variety) => (
               <li key={variety.slug}>
                 <Link to={siblingLink(variety.slug)} className={variety.slug === pokemon.slug ? 'is-current' : ''} aria-current={variety.slug === pokemon.slug ? 'page' : undefined}>
-                  <PokeImage sources={variety.sprite} alt="" width={64} height={64} />
+                  <PokeImage sources={variety.art} alt="" width={64} height={64} />
                   <span>{variety.name}</span>
                 </Link>
               </li>

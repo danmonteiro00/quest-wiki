@@ -52,7 +52,7 @@ const nodeFrom = (detail) => ({
   slug: detail.slug,
   name: detail.name,
   dexNumber: detail.dexNumber,
-  sprite: detail.sprite,
+  art: detail.art,
   how: [],
   evolvesTo: [],
 });
@@ -100,7 +100,7 @@ async function updateEvolution(tx, detail, evolvesFrom, how) {
   const previous = detail.evolution ? clone(detail.evolution) : null;
   const previousParent = findParent(previous, detail.slug);
   const node = findNode(previous, detail.slug) ?? nodeFrom(detail);
-  const fields = { name: detail.name, dexNumber: detail.dexNumber, sprite: detail.sprite, how: evolvesFrom && how ? [how] : [] };
+  const fields = { name: detail.name, dexNumber: detail.dexNumber, art: detail.art, how: evolvesFrom && how ? [how] : [] };
   Object.assign(node, fields);
 
   if ((previousParent?.slug ?? '') === evolvesFrom) {
@@ -136,7 +136,7 @@ async function updateEvolution(tx, detail, evolvesFrom, how) {
 // A lista de formas fica copiada na ficha de cada forma da mesma especie.
 async function syncVarieties(tx, dexNumber) {
   const { rows } = await tx.query('SELECT detail FROM pokedex_entry WHERE dex_number = $1 ORDER BY id', [dexNumber]);
-  const varieties = rows.map(({ detail }) => ({ slug: detail.slug, name: detail.name, isDefault: detail.isDefault, sprite: detail.sprite }));
+  const varieties = rows.map(({ detail }) => ({ slug: detail.slug, name: detail.name, isDefault: detail.isDefault, art: detail.art }));
   for (const { detail } of rows) {
     if (JSON.stringify(detail.varieties) === JSON.stringify(varieties)) continue;
     await writeEntry(tx, { ...detail, varieties });
@@ -211,8 +211,7 @@ function parseFields(raw) {
       };
     }),
     flavor: text(raw?.flavor, 'Entrada da Pokédex', 2000),
-    spriteUrl: imageUrl(raw?.spriteUrl, 'Sprite'),
-    artUrl: imageUrl(raw?.artUrl, 'Arte'),
+    artUrl: imageUrl(raw?.artUrl, 'Imagem'),
     moveRows: parseMoves(raw?.moves),
     evolvesFrom: text(raw?.evolvesFrom, 'Evolui de', 80),
     evolutionHow: text(raw?.evolutionHow, 'Como evolui', 200),
@@ -228,14 +227,13 @@ async function loadMatchups(db, types) {
 }
 
 function mergeFields(base, fields, matchups) {
-  const { flavor, spriteUrl, artUrl, moveRows, evolvesFrom, evolutionHow, ...plain } = fields;
+  const { flavor, artUrl, moveRows, evolvesFrom, evolutionHow, ...plain } = fields;
   const [, ...otherFlavors] = base.flavorTexts ?? [];
   const sameMoves = JSON.stringify(moveRows) === JSON.stringify(base.moves?.rows ?? []);
   return {
     ...base,
     ...plain,
     matchups,
-    sprite: imageList(spriteUrl, base.sprite ?? []),
     art: imageList(artUrl, base.art ?? []),
     flavorTexts: flavor ? [{ text: flavor, versions: base.flavorTexts?.[0]?.text === flavor ? base.flavorTexts[0].versions : [] }, ...otherFlavors] : otherFlavors,
     moves: moveRows.length ? { versionGroup: sameMoves ? base.moves.versionGroup : CUSTOM_MOVE_SOURCE, rows: moveRows } : null,
@@ -301,7 +299,7 @@ adminPokedexRouter.post('/', async (req, res) => {
       Object.assign(detail, { id: await nextId(tx), slug, isDefault: false });
       // A forma aparece na propria cadeia no lugar do Pokemon de origem.
       if (detail.evolution) {
-        detail.evolution = withNodeFields(detail.evolution, base.slug, { slug, name: detail.name, sprite: detail.sprite });
+        detail.evolution = withNodeFields(detail.evolution, base.slug, { slug, name: detail.name, art: detail.art });
       }
       await writeEntry(tx, detail);
       await syncVarieties(tx, detail.dexNumber);
@@ -335,7 +333,7 @@ adminPokedexRouter.put('/:slug', async (req, res) => {
     await syncVarieties(tx, detail.dexNumber);
     if (detail.isDefault) await updateEvolution(tx, await readDetail(tx, detail.slug), fields.evolvesFrom, fields.evolutionHow);
     else if (detail.evolution) {
-      const shown = { name: detail.name, sprite: detail.sprite };
+      const shown = { name: detail.name, art: detail.art };
       await patchChains(tx, dexNumbersIn(detail.evolution), (tree) => withNodeFields(tree, detail.slug, shown));
     }
   });

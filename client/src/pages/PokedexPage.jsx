@@ -89,7 +89,7 @@ export function PokedexPage() {
           <li key={pokemon.id} className={`dex-card type-tint-${pokemon.types[0]}`}>
             <Link to={pokemon.slug}>
               <span className="dex-number">{formatDex(pokemon.dexNumber)}</span>
-              <PokeImage sources={pokemon.sprite} alt="" className="dex-sprite" width={96} height={96} />
+              <PokeImage sources={pokemon.art} alt="" className="dex-art" width={96} height={96} />
               <span className="dex-name">{pokemon.name}</span>
               <span className="type-row">
                 {pokemon.types.map((name) => <TypeBadge key={name} type={name} />)}

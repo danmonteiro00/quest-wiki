@@ -55,8 +55,6 @@ const BY_SLUG = {
 
 const pad = (dexNumber) => String(dexNumber).padStart(3, '0');
 
-const spriteUrl = (file) => `${BASE}/pokedex-sv/icon/${file}.png`;
-const defaultSpriteUrl = (file) => `${BASE}/pokedex-sv/icon/new/${file}.png`;
 const artUrl = (file) => `${BASE}/pokemon/art/${file}.png`;
 
 export function formSuffix(slug, speciesSlug) {
@@ -72,12 +70,6 @@ export function imagesFor({ slug, speciesSlug, dexNumber, isDefault }) {
   const base = pad(dexNumber);
   const suffix = isDefault ? null : formSuffix(slug, speciesSlug);
   const form = suffix ? `${base}-${suffix}` : null;
-  if (!form) {
-    return { sprite: [defaultSpriteUrl(base)], art: [artUrl(base), defaultSpriteUrl(base)] };
-  }
-  // Sem arte da forma, o sprite dela ainda mostra o Pokemon certo; a forma base e o ultimo recurso.
-  return {
-    sprite: [spriteUrl(form), defaultSpriteUrl(base)],
-    art: [artUrl(form), spriteUrl(form), artUrl(base), defaultSpriteUrl(base)],
-  };
+  // Sem arte propria da forma, a pagina mostra a arte da forma base.
+  return { art: form ? [artUrl(form), artUrl(base)] : [artUrl(base)] };
 }

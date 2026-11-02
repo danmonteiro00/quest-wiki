@@ -357,7 +357,7 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .dex-number { align-self: flex-start; font-family: var(--display); font-weight: 600; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dex-sprite { width: 96px; height: 96px; object-fit: contain; image-rendering: auto; }
+.dex-art { width: 96px; height: 96px; object-fit: contain; image-rendering: auto; }
 .dex-name { font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
 
 .image-missing {

@@ -69,7 +69,7 @@ export function AdminPokedexPage() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th><span className="visually-hidden">Sprite</span></th>
+                <th><span className="visually-hidden">Imagem</span></th>
                 <th>Número</th>
                 <th>Nome</th>
                 <th>Tipos</th>
@@ -79,7 +79,7 @@ export function AdminPokedexPage() {
             <tbody>
               {matches.slice(0, limit).map((item) => (
                 <tr key={item.slug}>
-                  <td><PokeImage sources={item.sprite} alt="" width={40} height={40} /></td>
+                  <td><PokeImage sources={item.art} alt="" width={40} height={40} /></td>
                   <td>{formatDex(item.dexNumber)}</td>
                   <td><strong>{item.name}</strong></td>
                   <td>

@@ -220,7 +220,7 @@ export function buildEntries({ store }) {
         slug: display.name,
         name: displayName(display, shownSpecies),
         dexNumber: shownSpecies.id,
-        sprite: imagesOf(display, shownSpecies).sprite,
+        art: imagesOf(display, shownSpecies).art,
         how,
         evolvesTo: replaced ? [] : childrenOf(name, link),
       };
@@ -262,7 +262,7 @@ export function buildEntries({ store }) {
       generation: GENERATIONS[species.generation.name.split('-')[1]],
       isLegendary: species.is_legendary,
       isMythical: species.is_mythical,
-      sprite: images.sprite,
+      art: images.art,
     };
 
     const flavorTexts = new Map();
@@ -279,7 +279,6 @@ export function buildEntries({ store }) {
     const detail = {
       ...summary,
       speciesSlug: species.name,
-      art: images.art,
       formName: english(form?.form_names)?.name ?? null,
       genus: english(species.genera)?.genus ?? null,
       height: pokemon.height / 10,
@@ -320,7 +319,7 @@ export function buildEntries({ store }) {
           slug: other.name,
           name: displayName(other, species),
           isDefault: variety.is_default,
-          sprite: imagesOf(other, species).sprite,
+          art: imagesOf(other, species).art,
         };
       }),
       cosmeticForms: pokemon.forms.length > 1

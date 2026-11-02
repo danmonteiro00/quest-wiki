@@ -50,7 +50,7 @@ client/src/               site em React
 
 ## Imagens
 
-As imagens vêm direto do Serebii. Quando a forma não tem arte, a página usa o sprite dela e, em último caso, a imagem da forma base. Os sufixos ficam em [server/import/serebii.js](server/import/serebii.js); depois de mudar algum, rode `npm run db:import`.
+As imagens vêm direto do Serebii. Quando a forma não tem arte própria, a página usa a arte da forma base. Os sufixos ficam em [server/import/serebii.js](server/import/serebii.js); depois de mudar algum, rode `npm run db:import`.
 
 ## Mapa
 
