@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { slugify } from '../../../../shared/slug.js';
 import { forgetCached, request } from '../../api.js';
 import { ImageField } from '../../components/ImageField.jsx';
+import { SearchSelect } from '../../components/SearchSelect.jsx';
 import { capitalize, formatDex, TYPES } from '../../components/TypeBadge.jsx';
+import { useApi } from '../../useApi.js';
 
 const STATS = [
   ['hp', 'HP'],
@@ -113,7 +115,11 @@ function Input({ label, value, onChange, ...props }) {
   );
 }
 
+const toOptions = (items) => items.map((item) => ({ value: item.slug, label: item.name, item }));
+
 function AbilitiesEditor({ abilities, onChange }) {
+  const { data: catalog } = useApi('/api/admin/catalog/abilities');
+  const options = useMemo(() => toOptions(catalog ?? []), [catalog]);
   const update = (index, patch) => onChange(abilities.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   return (
     <>
@@ -123,7 +129,16 @@ function AbilitiesEditor({ abilities, onChange }) {
             <input type="checkbox" checked={Boolean(ability.isHidden)} onChange={(event) => update(index, { isHidden: event.target.checked })} />
             Oculta
           </label>
-          <Input label="Habilidade" value={ability.name} required onChange={(name) => update(index, { name })} />
+          <SearchSelect
+            label="Habilidade"
+            freeText
+            required
+            options={options}
+            value={ability.name}
+            placeholder="Digite para buscar ou criar"
+            onChange={(name) => update(index, { name })}
+            onPick={({ item }) => update(index, { name: item.name, effect: item.effect })}
+          />
           <button type="button" className="button button--quiet" onClick={() => onChange(abilities.filter((_, i) => i !== index))}>Remover</button>
           <label className="field admin-wide">
             Efeito
@@ -139,6 +154,8 @@ function AbilitiesEditor({ abilities, onChange }) {
 }
 
 function MovesEditor({ moves, onChange }) {
+  const { data: catalog } = useApi('/api/admin/catalog/moves');
+  const options = useMemo(() => toOptions(catalog ?? []), [catalog]);
   const [open, setOpen] = useState(false);
   const update = (index, patch) => onChange(moves.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   const add = () => {
@@ -168,7 +185,24 @@ function MovesEditor({ moves, onChange }) {
             <tbody>
               {moves.map((move, index) => (
                 <tr key={index}>
-                  <td><input aria-label="Nome do golpe" value={move.name} required onChange={(event) => update(index, { name: event.target.value })} /></td>
+                  <td>
+                    <SearchSelect
+                      ariaLabel="Nome do golpe"
+                      freeText
+                      required
+                      options={options}
+                      value={move.name}
+                      onChange={(name) => update(index, { name })}
+                      onPick={({ item }) => update(index, {
+                        name: item.name,
+                        type: item.type,
+                        category: item.category,
+                        power: item.power,
+                        accuracy: item.accuracy,
+                        pp: item.pp,
+                      })}
+                    />
+                  </td>
                   <td>
                     <select aria-label="Como aprende" value={move.method} onChange={(event) => update(index, { method: event.target.value })}>
                       {MOVE_METHODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -208,6 +242,7 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
   const setStat = (stat) => (value) => setForm((current) => ({ ...current, stats: { ...current.stats, [stat]: value } }));
   const setEv = (stat) => (value) => setForm((current) => ({ ...current, evYield: { ...current.evYield, [stat]: value } }));
   const check = (field) => (event) => set(field)(event.target.checked);
+  const evolveOptions = useMemo(() => species.filter((item) => item.value !== form.slug), [species, form.slug]);
 
   return (
     <>
@@ -296,15 +331,13 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
         <div className="admin-block">
           <h2>Evolução</h2>
           <div className="admin-grid">
-            <label className="field">
-              Evolui de
-              <select value={form.evolvesFrom} onChange={(event) => set('evolvesFrom')(event.target.value)}>
-                <option value="">Nenhum (primeiro estágio)</option>
-                {species.filter((item) => item.slug !== form.slug).map((item) => (
-                  <option key={item.slug} value={item.slug}>{formatDex(item.dexNumber)} {item.name}</option>
-                ))}
-              </select>
-            </label>
+            <SearchSelect
+              label="Evolui de"
+              options={evolveOptions}
+              value={form.evolvesFrom}
+              placeholder="Nenhum (primeiro estágio)"
+              onChange={set('evolvesFrom')}
+            />
             <Input label="Como evolui" value={form.evolutionHow} disabled={!form.evolvesFrom} placeholder="Level 16" onChange={set('evolutionHow')} />
           </div>
         </div>
@@ -349,8 +382,9 @@ export function AdminPokemonFormPage() {
       .catch((failure) => setError(failure.message));
   }, [editing, slug]);
 
-  const species = useMemo(() => list.filter((item) => item.isDefault), [list]);
-  const nextDex = useMemo(() => species.reduce((max, item) => Math.max(max, item.dexNumber), 0) + 1, [species]);
+  const defaults = useMemo(() => list.filter((item) => item.isDefault), [list]);
+  const species = useMemo(() => defaults.map((item) => ({ value: item.slug, label: `${formatDex(item.dexNumber)} ${item.name}` })), [defaults]);
+  const nextDex = useMemo(() => defaults.reduce((max, item) => Math.max(max, item.dexNumber), 0) + 1, [defaults]);
 
   useEffect(() => {
     if (!editing && kind === 'new') setForm((current) => (current && !current.dexNumber && list.length ? { ...current, dexNumber: nextDex } : current));
@@ -413,13 +447,14 @@ export function AdminPokemonFormPage() {
               </select>
             </label>
             {kind === 'regional' && (
-              <label className="field">
-                Pokémon de origem
-                <select value={baseSlug} required onChange={(event) => chooseBase(event.target.value)}>
-                  <option value="">Escolha</option>
-                  {species.map((item) => <option key={item.slug} value={item.slug}>{formatDex(item.dexNumber)} {item.name}</option>)}
-                </select>
-              </label>
+              <SearchSelect
+                label="Pokémon de origem"
+                options={species}
+                value={baseSlug}
+                required
+                placeholder="Digite o nome ou o número"
+                onChange={chooseBase}
+              />
             )}
           </div>
         )}

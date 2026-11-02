@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PokeImage } from '../components/PokeImage.jsx';
 import { capitalize, formatDex, TypeBadge } from '../components/TypeBadge.jsx';
+import { buildPokemonSheet, copyText } from '../pokemonSheet.js';
 import { useApi } from '../useApi.js';
 
 const STAT_LABELS = {
@@ -177,9 +178,37 @@ function Moves({ moves, inherited }) {
   );
 }
 
+function CopySheetButton({ pokemon, artUrl }) {
+  const [status, setStatus] = useState(null);
+  const timer = useRef(null);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const copy = async () => {
+    const copied = await copyText(buildPokemonSheet(pokemon, artUrl));
+    setStatus(copied ? 'Ficha copiada!' : 'Não foi possível copiar');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setStatus(null), 2500);
+  };
+
+  return (
+    <div className="copy-sheet">
+      <span className="copy-sheet-status" role="status">{status}</span>
+      <button type="button" onClick={copy} aria-label="Copiar ficha" title="Copiar ficha">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export function PokemonPage() {
   const { slug } = useParams();
   const { data: pokemon, error } = useApi(`/api/pokemon/${encodeURIComponent(slug)}`);
+  // A ficha copiada usa a mesma imagem que carregou na tela, que pode ser a reserva.
+  const [loadedArt, setLoadedArt] = useState(null);
 
   if (error) {
     return (
@@ -202,6 +231,7 @@ export function PokemonPage() {
       <Link to=".." relative="path" className="back-link">← Pokédex</Link>
 
       <header className={`hero type-tint-${pokemon.types[0]}`}>
+        <CopySheetButton pokemon={pokemon} artUrl={loadedArt?.slug === pokemon.slug ? loadedArt.url : pokemon.art[0]} />
         <div className="hero-text">
           <p className="hero-number">{formatDex(pokemon.dexNumber)}</p>
           <h1>{pokemon.name}</h1>
@@ -212,7 +242,7 @@ export function PokemonPage() {
           {flags.length > 0 && <p className="hero-flags">{flags.join(' · ')}</p>}
           {pokemon.flavorTexts[0] && <p className="hero-flavor">{pokemon.flavorTexts[0].text}</p>}
         </div>
-        <PokeImage sources={pokemon.art} alt={`Arte de ${pokemon.name}`} className="hero-art" width={320} height={320} eager />
+        <PokeImage sources={pokemon.art} alt={`Arte de ${pokemon.name}`} className="hero-art" width={320} height={320} eager onLoadSource={(url) => setLoadedArt({ slug: pokemon.slug, url })} />
       </header>
 
       <div className="panel-grid">

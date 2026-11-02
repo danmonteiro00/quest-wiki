@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import { requireStaff } from './auth.js';
 import { getDb } from './db.js';
+import { adminCatalogRouter } from './routes/admin-catalog.js';
 import { adminPokedexRouter } from './routes/admin-pokedex.js';
 import { adminUsersRouter } from './routes/admin-users.js';
 import { authRouter } from './routes/auth.js';
@@ -30,6 +31,7 @@ app.use('/api/auth', authRouter);
 const adminRouter = Router();
 adminRouter.use(requireStaff);
 adminRouter.use('/users', adminUsersRouter);
+adminRouter.use('/catalog', adminCatalogRouter);
 adminRouter.use('/pokedex', adminPokedexRouter);
 adminRouter.use('/map', adminMapRouter);
 adminRouter.use('/images', adminImagesRouter);

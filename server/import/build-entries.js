@@ -2,8 +2,8 @@ import { imagesFor } from './serebii.js';
 
 const titleize = (slug) => slug.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 const idFromUrl = (url) => Number(url.match(/\/(\d+)\/?$/)[1]);
-const english = (list) => list?.find((item) => item.language.name === 'en');
-const cleanText = (text) => text.replace(/[\f\n\r­]+/g, ' ').replace(/\s+/g, ' ').trim();
+export const english = (list) => list?.find((item) => item.language.name === 'en');
+export const cleanText = (text) => text.replace(/[\f\n\r­]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 const GENERATIONS = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9 };
 

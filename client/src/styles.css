@@ -426,11 +426,29 @@ button, input, select { font: inherit; color: inherit; }
   align-items: center;
   gap: 24px;
   padding: clamp(20px, 4vw, 40px);
+  /* Reserva a faixa do botao de copiar, que fica acima da imagem. */
+  padding-top: 58px;
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: color-mix(in srgb, var(--type-color) calc(var(--tint-strength) + 6%), var(--surface));
   margin-bottom: 16px;
 }
+
+.copy-sheet { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 8px; }
+.copy-sheet-status { font-size: 0.85rem; font-weight: 700; }
+.copy-sheet button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.copy-sheet button:hover { border-color: var(--accent); color: var(--accent); }
 
 .hero-number { margin: 0; font-family: var(--display); font-weight: 600; color: var(--muted); font-size: 1.05rem; }
 .hero h1 { font-size: clamp(2.1rem, 5.5vw, 3.6rem); overflow-wrap: anywhere; }
@@ -791,6 +809,8 @@ a.poke-slot:hover { border-color: var(--accent); }
 .admin-table .type-row { justify-content: flex-start; margin: 0; }
 .admin-moves input, .admin-moves select { width: 100%; min-width: 64px; height: 36px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .admin-moves td { padding: 4px; }
+.admin-moves input[role=combobox] { min-width: 180px; }
+.admin-moves select { min-width: 104px; }
 .admin-more { display: block; margin: 14px auto 0; }
 .button--danger:hover { border-color: var(--accent); color: var(--accent); }
 .button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
@@ -864,6 +884,20 @@ a.poke-slot:hover { border-color: var(--accent); }
 }
 
 .admin-wide { grid-column: 1 / -1; }
+
+.search-select-list {
+  position: fixed;
+  z-index: 40;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.25);
+}
+
+.search-select-list li { padding: 8px 12px; cursor: pointer; }
+.search-select-list li.is-active { background: var(--surface-2); }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
