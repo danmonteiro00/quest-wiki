@@ -72,11 +72,11 @@ function Stats({ stats, total }) {
   );
 }
 
-function EvolutionNode({ node, current }) {
+function EvolutionNode({ node, current, linkTo }) {
   const { state } = useLocation();
   return (
     <div className="evo-branch">
-      <Link to={siblingLink(node.slug)} state={state} className={`evo-pokemon${node.slug === current ? ' is-current' : ''}`} aria-current={node.slug === current ? 'page' : undefined}>
+      <Link to={linkTo(node.slug)} state={state} className={`evo-pokemon${node.slug === current ? ' is-current' : ''}`} aria-current={node.slug === current ? 'page' : undefined}>
         <PokeImage sources={node.art} alt="" width={72} height={72} />
         <span>{node.name}</span>
         <small>{formatDex(node.dexNumber)}</small>
@@ -86,7 +86,7 @@ function EvolutionNode({ node, current }) {
           {node.evolvesTo.map((next) => (
             <div key={next.slug} className="evo-step">
               <p className="evo-how">{next.how.join(' / ') || 'Evolui'}</p>
-              <EvolutionNode node={next} current={current} />
+              <EvolutionNode node={next} current={current} linkTo={linkTo} />
             </div>
           ))}
         </div>
@@ -183,18 +183,26 @@ export function PokemonPage() {
   // Volta para a mesma pagina e os mesmos filtros de onde o Pokemon foi aberto.
   const backTo = state?.dexSearch ? `..?${state.dexSearch}` : '..';
   const { data: pokemon, error } = useApi(`/api/pokemon/${encodeURIComponent(slug)}`);
-  // A ficha copiada usa a mesma imagem que carregou na tela, que pode ser a reserva.
-  const [loadedArt, setLoadedArt] = useState(null);
+  const back = <Link to={backTo} relative="path" className="back-link">← Pokédex</Link>;
 
   if (error) {
     return (
       <>
-        <Link to={backTo} relative="path" className="back-link">← Pokédex</Link>
+        {back}
         <p className="notice notice--error">{error.status === 404 ? 'Pokémon não encontrado.' : 'Não foi possível carregar este Pokémon.'}</p>
       </>
     );
   }
   if (!pokemon) return <p className="notice">Carregando…</p>;
+
+  return <PokemonView pokemon={pokemon} back={back} />;
+}
+
+// A prévia de um rascunho usa esta mesma tela, trocando para onde os links apontam.
+export function PokemonView({ pokemon, back, linkTo = siblingLink }) {
+  const { state } = useLocation();
+  // A ficha copiada usa a mesma imagem que carregou na tela, que pode ser a reserva.
+  const [loadedArt, setLoadedArt] = useState(null);
 
   const flags = [
     pokemon.isLegendary && 'Legendary',
@@ -204,7 +212,7 @@ export function PokemonPage() {
 
   return (
     <article key={pokemon.slug} className="pokemon">
-      <Link to={backTo} relative="path" className="back-link">← Pokédex</Link>
+      {back}
 
       <header className={`hero type-tint-${pokemon.types[0]}`}>
         <CopySheetButton pokemon={pokemon} artUrl={loadedArt?.slug === pokemon.slug ? loadedArt.url : pokemon.art[0]} />
@@ -251,7 +259,7 @@ export function PokemonPage() {
       {pokemon.evolution && (
         <Section title="Evolução" className="panel--wide">
           <div className="evolution">
-            <EvolutionNode node={pokemon.evolution} current={pokemon.slug} />
+            <EvolutionNode node={pokemon.evolution} current={pokemon.slug} linkTo={linkTo} />
           </div>
         </Section>
       )}
@@ -261,7 +269,7 @@ export function PokemonPage() {
           <ul className="varieties">
             {pokemon.varieties.map((variety) => (
               <li key={variety.slug}>
-                <Link to={siblingLink(variety.slug)} state={state} className={variety.slug === pokemon.slug ? 'is-current' : ''} aria-current={variety.slug === pokemon.slug ? 'page' : undefined}>
+                <Link to={linkTo(variety.slug)} state={state} className={variety.slug === pokemon.slug ? 'is-current' : ''} aria-current={variety.slug === pokemon.slug ? 'page' : undefined}>
                   <PokeImage sources={variety.art} alt="" width={64} height={64} />
                   <span>{variety.name}</span>
                 </Link>

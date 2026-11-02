@@ -1,12 +1,80 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { forgetCached, request } from '../../api.js';
 import { PokeImage } from '../../components/PokeImage.jsx';
 import { formatDex, TypeBadge } from '../../components/TypeBadge.jsx';
+import { logDate } from '../../drawLog.js';
 
 const PAGE_SIZE = 50;
 
+function DraftsTab({ drafts, onChange }) {
+  const [error, setError] = useState(null);
+
+  const remove = async (draft) => {
+    if (!window.confirm(`Excluir o rascunho ${draft.name}?`)) return;
+    setError(null);
+    try {
+      await request(`/api/admin/pokedex/drafts/${draft.id}`, { method: 'DELETE' });
+      await onChange();
+    } catch (failure) {
+      setError(failure.message);
+    }
+  };
+
+  if (!drafts.length) return <p className="notice">Nenhum rascunho salvo. Ao cadastrar um Pokémon, use "Salvar como rascunho".</p>;
+
+  return (
+    <>
+      {error && <p className="notice notice--error" role="alert">{error}</p>}
+      <div className="table-scroll panel">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th><span className="visually-hidden">Imagem</span></th>
+              <th>Número</th>
+              <th>Nome</th>
+              <th>Tipos</th>
+              <th>Alterado em</th>
+              <th>Por</th>
+              <th><span className="visually-hidden">Ações</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {drafts.map((draft) => (
+              <tr key={draft.id}>
+                <td><PokeImage sources={draft.art} alt="" width={40} height={40} /></td>
+                <td>{draft.dexNumber ? formatDex(draft.dexNumber) : '—'}</td>
+                <td>
+                  <strong>{draft.name}</strong>
+                  {draft.kind === 'regional' && <span className="tag">Forma Regional</span>}
+                </td>
+                <td>
+                  <div className="type-row">
+                    {draft.types.map((type) => <TypeBadge key={type} type={type} />)}
+                  </div>
+                </td>
+                <td className="log-date">{logDate(draft.updatedAt)}</td>
+                <td>{draft.author ?? '—'}</td>
+                <td>
+                  <div className="admin-actions">
+                    <Link className="button button--quiet" to={`/admin/pokedex/rascunhos/${draft.id}/previa`} aria-label={`Ver prévia de ${draft.name}`}>Prévia</Link>
+                    <Link className="button button--quiet" to={`/admin/pokedex/rascunhos/${draft.id}`} aria-label={`Editar rascunho ${draft.name}`}>Editar</Link>
+                    <button type="button" className="button button--quiet button--danger" aria-label={`Excluir rascunho ${draft.name}`} onClick={() => remove(draft)}>Excluir</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 export function AdminPokedexPage() {
+  const [params, setParams] = useSearchParams();
+  const showDrafts = params.get('aba') === 'rascunhos';
+  const [drafts, setDrafts] = useState(null);
   const [pokemon, setPokemon] = useState(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -14,8 +82,11 @@ export function AdminPokedexPage() {
 
   const load = () => request('/api/admin/pokedex').then(setPokemon).catch((failure) => setError(failure.message));
 
+  const loadDrafts = () => request('/api/admin/pokedex/drafts').then(setDrafts).catch((failure) => setError(failure.message));
+
   useEffect(() => {
     load();
+    loadDrafts();
   }, []);
 
   const matches = useMemo(() => {
@@ -45,6 +116,23 @@ export function AdminPokedexPage() {
         {pokemon && <p className="page-count">{matches.length} de {pokemon.length}</p>}
       </header>
 
+      <div className="tabs" role="group" aria-label="Seções da Pokédex">
+        <button type="button" className={showDrafts ? '' : 'is-active'} aria-pressed={!showDrafts} onClick={() => setParams({}, { replace: true })}>Publicados</button>
+        <button type="button" className={showDrafts ? 'is-active' : ''} aria-pressed={showDrafts} onClick={() => setParams({ aba: 'rascunhos' }, { replace: true })}>
+          Rascunhos{drafts ? ` (${drafts.length})` : ''}
+        </button>
+      </div>
+
+      {showDrafts ? (
+        <>
+          <div className="admin-toolbar">
+            <Link className="button" to="/admin/pokedex/novo">Cadastrar Pokémon</Link>
+          </div>
+          {error && <p className="notice notice--error" role="alert">{error}</p>}
+          {drafts ? <DraftsTab drafts={drafts} onChange={loadDrafts} /> : !error && <p className="notice">Carregando…</p>}
+        </>
+      ) : (
+      <>
       <div className="admin-toolbar">
         <label className="field field--search">
           Buscar
@@ -101,6 +189,8 @@ export function AdminPokedexPage() {
             <button type="button" className="button button--quiet admin-more" onClick={() => setLimit(limit + PAGE_SIZE)}>Mostrar mais</button>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -83,6 +83,16 @@ CREATE TABLE IF NOT EXISTS draw_log (
 CREATE INDEX IF NOT EXISTS draw_log_user_idx ON draw_log (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS draw_log_created_idx ON draw_log (created_at DESC);
 
+-- Pokemon ainda nao publicados: guarda o que foi preenchido no formulario, mesmo incompleto.
+-- Fica fora de pokedex_entry, entao nao aparece na Pokedex, no mapa nem nas listas de evolucao.
+CREATE TABLE IF NOT EXISTS pokedex_draft (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  payload json NOT NULL,
+  created_by bigint REFERENCES app_user (id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- Primeira conta de Admin. So o hash da senha fica no codigo, e so entra se nao houver nenhum Admin.
 INSERT INTO app_user (username, email, password_hash, role)
 SELECT 'admin', 'admin@questwiki.local', 'scrypt$65536$8$1$+WiRudHDWNoN4MkjEWbciw==$H7781z069vdDYKojr/BUc1uTmsLUKPBgnutATdkDmKk=', 'admin'

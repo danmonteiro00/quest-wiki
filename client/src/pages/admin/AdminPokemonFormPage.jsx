@@ -109,6 +109,18 @@ function toPayload({ type1, type2, eggGroups, heldItems, ...form }) {
   };
 }
 
+// O rascunho guarda o mesmo que seria publicado; aqui volta para o formato dos campos.
+function fromPayload({ types, eggGroups, heldItems, ...payload }) {
+  return {
+    ...emptyForm(),
+    ...payload,
+    type1: types?.[0] ?? '',
+    type2: types?.[1] ?? '',
+    eggGroups: (eggGroups ?? []).join(', '),
+    heldItems: (heldItems ?? []).join(', '),
+  };
+}
+
 function Input({ label, value, onChange, ...props }) {
   return (
     <label className="field">
@@ -358,13 +370,13 @@ function clearCaches(slug) {
 }
 
 export function AdminPokemonFormPage() {
-  const { slug } = useParams();
+  const { slug, draftId } = useParams();
   const navigate = useNavigate();
   const editing = Boolean(slug);
   const [list, setList] = useState([]);
   const [kind, setKind] = useState('new');
   const [baseSlug, setBaseSlug] = useState('');
-  const [form, setForm] = useState(editing ? null : emptyForm);
+  const [form, setForm] = useState(editing || draftId ? null : emptyForm);
   const [regional, setRegional] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -382,6 +394,18 @@ export function AdminPokemonFormPage() {
       })
       .catch((failure) => setError(failure.message));
   }, [editing, slug]);
+
+  useEffect(() => {
+    if (!draftId) return;
+    request(`/api/admin/pokedex/drafts/${encodeURIComponent(draftId)}`)
+      .then(({ id, kind: savedKind, baseSlug: savedBase, ...payload }) => {
+        setKind(savedKind === 'regional' ? 'regional' : 'new');
+        setBaseSlug(savedBase ?? '');
+        setRegional(savedKind === 'regional');
+        setForm(fromPayload(payload));
+      })
+      .catch((failure) => setError(failure.message));
+  }, [draftId]);
 
   const defaults = useMemo(() => list.filter((item) => item.isDefault), [list]);
   const species = useMemo(() => defaults.map((item) => ({ value: item.slug, label: `${formatDex(item.dexNumber)} ${item.name}` })), [defaults]);
@@ -413,6 +437,21 @@ export function AdminPokemonFormPage() {
     }
   };
 
+  const saveDraft = async (openPreview) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const body = { ...toPayload(form), kind, baseSlug };
+      const { id } = draftId
+        ? await request(`/api/admin/pokedex/drafts/${encodeURIComponent(draftId)}`, { method: 'PUT', body })
+        : await request('/api/admin/pokedex/drafts', { method: 'POST', body });
+      navigate(openPreview ? `/admin/pokedex/rascunhos/${id}/previa` : '/admin/pokedex?aba=rascunhos');
+    } catch (failure) {
+      setError(failure.message);
+      setBusy(false);
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     setError(null);
@@ -421,7 +460,7 @@ export function AdminPokemonFormPage() {
       const body = toPayload(form);
       const saved = editing
         ? await request(`/api/admin/pokedex/${encodeURIComponent(slug)}`, { method: 'PUT', body })
-        : await request('/api/admin/pokedex', { method: 'POST', body: { ...body, kind, baseSlug } });
+        : await request('/api/admin/pokedex', { method: 'POST', body: { ...body, kind, baseSlug, draftId } });
       clearCaches(saved.slug);
       navigate('/admin/pokedex');
     } catch (failure) {
@@ -432,9 +471,9 @@ export function AdminPokemonFormPage() {
 
   return (
     <div className="admin-page admin-page--narrow">
-      <Link to="/admin/pokedex" className="back-link">← Pokédex</Link>
+      <Link to={draftId ? '/admin/pokedex?aba=rascunhos' : '/admin/pokedex'} className="back-link">← Pokédex</Link>
       <header className="page-header">
-        <h1>{editing ? `Editar ${form?.name ?? ''}` : 'Cadastrar Pokémon'}</h1>
+        <h1>{editing ? `Editar ${form?.name ?? ''}` : draftId ? 'Rascunho' : 'Cadastrar Pokémon'}</h1>
       </header>
 
       <form className="panel admin-form" onSubmit={submit}>
@@ -461,10 +500,20 @@ export function AdminPokemonFormPage() {
         )}
 
         {form && <PokemonFields key={`${kind}-${baseSlug}`} form={form} setForm={setForm} regional={regional} editing={editing} species={species} />}
-        {editing && !form && !error && <p className="notice">Carregando…</p>}
+        {(editing || draftId) && !form && !error && <p className="notice">Carregando…</p>}
 
         {error && <p className="notice notice--error" role="alert">{error}</p>}
-        {form && <button type="submit" className="button" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>}
+        {form && (
+          <div className="admin-row">
+            <button type="submit" className="button" disabled={busy}>{busy ? 'Salvando…' : draftId ? 'Publicar' : 'Salvar'}</button>
+            {!editing && (
+              <>
+                <button type="button" className="button button--quiet" disabled={busy} onClick={() => saveDraft(false)}>Salvar como rascunho</button>
+                <button type="button" className="button button--quiet" disabled={busy} onClick={() => saveDraft(true)}>Salvar e ver prévia</button>
+              </>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

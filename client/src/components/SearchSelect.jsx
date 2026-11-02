@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 const MAX_RESULTS = 50;
+const MIN_SPACE_BELOW = 240;
 
 const normalize = (text) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -27,7 +28,12 @@ export function SearchSelect({ label, ariaLabel, options, value, onChange, onPic
   // A lista fica em position: fixed para nao ser cortada pela rolagem da tabela de golpes.
   const show = () => {
     const box = inputRef.current.getBoundingClientRect();
-    setPosition({ left: box.left, top: box.bottom + 4, width: Math.max(box.width, 260) });
+    const place = { left: box.left, width: Math.max(box.width, 260) };
+    // Perto do fim da tela a lista abre para cima, senao ficaria fora da area visivel.
+    const spaceBelow = window.innerHeight - box.bottom;
+    setPosition(spaceBelow < MIN_SPACE_BELOW && box.top > spaceBelow
+      ? { ...place, bottom: window.innerHeight - box.top + 4, maxHeight: box.top - 8 }
+      : { ...place, top: box.bottom + 4, maxHeight: spaceBelow - 8 });
   };
 
   const close = () => {

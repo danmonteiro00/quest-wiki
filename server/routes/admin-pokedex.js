@@ -5,7 +5,7 @@ import { withEditedMoves } from '../catalog-store.js';
 import { getDb } from '../db.js';
 import { typeMatchups } from '../import/build-entries.js';
 import { deleteEntry, writeEntry } from '../pokedex-store.js';
-import { array, fail, imageUrl, number, text } from '../validate.js';
+import { array, fail, imageUrl, isImageUrl, number, text } from '../validate.js';
 
 export const adminPokedexRouter = Router();
 
@@ -16,7 +16,7 @@ export const TYPES = new Set([
 const STATS = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed'];
 const MOVE_METHODS = new Set(['level-up', 'machine', 'egg', 'tutor']);
 export const MOVE_CATEGORIES = new Set(['physical', 'special', 'status']);
-const RESERVED_SLUGS = new Set(['novo']);
+const RESERVED_SLUGS = new Set(['novo', 'drafts', 'rascunhos']);
 // Acima de qualquer id da PokeAPI, para uma nova importacao nunca colidir com o que o Admin criou.
 const FIRST_CUSTOM_ID = 1000000;
 const CUSTOM_MOVE_SOURCE = 'Quest Wiki';
@@ -281,6 +281,118 @@ adminPokedexRouter.get('/', async (_req, res) => {
   res.json(rows.map((row) => row.summary));
 });
 
+// Rascunhos: nao passam pela validacao de publicar, justamente para poder salvar pela metade.
+
+function draftPayload(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) fail('Rascunho inválido');
+  const { id, draftId, ...payload } = raw;
+  return payload;
+}
+
+async function readDraft(db, rawId) {
+  if (!/^\d{1,15}$/.test(rawId)) return null;
+  const { rows } = await db.query('SELECT id::int AS id, payload FROM pokedex_draft WHERE id = $1', [Number(rawId)]);
+  return rows[0] ?? null;
+}
+
+// Completa o que falta so para conseguir mostrar a pagina; um valor preenchido errado continua sendo avisado.
+function parseForPreview(raw) {
+  const named = (list) => array(list).filter((item) => String(item?.name ?? '').trim());
+  const types = array(raw.types).filter(Boolean);
+  const fields = parseFields({
+    ...raw,
+    name: String(raw.name ?? '').trim() || 'Sem nome',
+    types: types.length ? types : ['normal'],
+    generation: raw.generation || 1,
+    height: raw.height || 0,
+    weight: raw.weight || 0,
+    stats: Object.fromEntries(STATS.map((stat) => [stat, raw.stats?.[stat] || 0])),
+    abilities: named(raw.abilities),
+    moves: named(raw.moves).map((move) => ({ method: 'level-up', ...move })),
+  });
+  return { ...fields, types: types.length ? fields.types : [] };
+}
+
+async function previewDetail(db, payload) {
+  const fields = parseForPreview(payload);
+  const slug = slugify(payload.slug || fields.name) || 'rascunho';
+  const regional = payload.kind === 'regional';
+  const base = regional ? await readDetail(db, String(payload.baseSlug ?? '')) : null;
+  if (regional && !base) fail('Forma Regional: escolha o Pokémon de origem');
+
+  const detail = mergeFields(base ?? EMPTY_DETAIL, fields, {});
+  const shown = { slug, name: detail.name, art: detail.art };
+  Object.assign(detail, { slug, isDefault: !regional, dexNumber: base?.dexNumber ?? (Number(payload.dexNumber) || 0) });
+
+  if (base) {
+    detail.varieties = [...base.varieties, { ...shown, isDefault: false }];
+    if (base.evolution) detail.evolution = withNodeFields(base.evolution, base.slug, shown);
+    return detail;
+  }
+
+  const parent = fields.evolvesFrom ? await readDetail(db, fields.evolvesFrom) : null;
+  if (parent) {
+    const tree = parent.evolution ? clone(parent.evolution) : nodeFrom(parent);
+    findNode(tree, parent.slug)?.evolvesTo.push({ ...nodeFrom(detail), how: fields.evolutionHow ? [fields.evolutionHow] : [] });
+    detail.evolution = tree;
+  }
+  return detail;
+}
+
+adminPokedexRouter.get('/drafts', async (_req, res) => {
+  const db = await getDb();
+  const { rows } = await db.query(
+    `SELECT d.id::int AS id, d.payload, d.updated_at AS "updatedAt", u.username AS author
+     FROM pokedex_draft d LEFT JOIN app_user u ON u.id = d.created_by ORDER BY d.updated_at DESC`,
+  );
+  res.json(rows.map(({ payload, ...draft }) => ({
+    ...draft,
+    kind: payload.kind === 'regional' ? 'regional' : 'new',
+    name: String(payload.name ?? '').trim() || 'Sem nome',
+    dexNumber: Number(payload.dexNumber) || null,
+    types: array(payload.types).filter((type) => TYPES.has(type)),
+    art: isImageUrl(payload.artUrl ?? '') ? [payload.artUrl] : [],
+  })));
+});
+
+adminPokedexRouter.get('/drafts/:id', async (req, res) => {
+  const draft = await readDraft(await getDb(), req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
+  res.json({ id: draft.id, ...draft.payload });
+});
+
+adminPokedexRouter.get('/drafts/:id/preview', async (req, res) => {
+  const db = await getDb();
+  const draft = await readDraft(db, req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
+  res.json(await previewDetail(db, draft.payload));
+});
+
+adminPokedexRouter.post('/drafts', async (req, res) => {
+  const db = await getDb();
+  const { rows } = await db.query(
+    'INSERT INTO pokedex_draft (payload, created_by) VALUES ($1::json, $2) RETURNING id::int AS id',
+    [JSON.stringify(draftPayload(req.body)), req.user.id],
+  );
+  res.status(201).json(rows[0]);
+});
+
+adminPokedexRouter.put('/drafts/:id', async (req, res) => {
+  const db = await getDb();
+  const draft = await readDraft(db, req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
+  await db.query('UPDATE pokedex_draft SET payload = $2::json, updated_at = now() WHERE id = $1', [draft.id, JSON.stringify(draftPayload(req.body))]);
+  res.json({ id: draft.id });
+});
+
+adminPokedexRouter.delete('/drafts/:id', async (req, res) => {
+  const db = await getDb();
+  const draft = await readDraft(db, req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
+  await db.query('DELETE FROM pokedex_draft WHERE id = $1', [draft.id]);
+  res.status(204).end();
+});
+
 adminPokedexRouter.get('/:slug', async (req, res) => {
   const db = await getDb();
   const detail = await readDetail(db, req.params.slug);
@@ -303,6 +415,10 @@ adminPokedexRouter.post('/', async (req, res) => {
   }
 
   const matchups = await loadMatchups(db, fields.types);
+  // Publicar um rascunho tira ele da aba de rascunhos na mesma transacao.
+  const removeDraft = async (tx) => {
+    if (/^\d{1,15}$/.test(req.body?.draftId)) await tx.query('DELETE FROM pokedex_draft WHERE id = $1', [Number(req.body.draftId)]);
+  };
   const created = await db.transaction(async (tx) => {
     if (regional) {
       const base = await readDetail(tx, String(req.body?.baseSlug ?? ''));
@@ -315,6 +431,7 @@ adminPokedexRouter.post('/', async (req, res) => {
       }
       await writeEntry(tx, detail);
       await syncVarieties(tx, detail.dexNumber);
+      await removeDraft(tx);
       return detail;
     }
 
@@ -327,6 +444,7 @@ adminPokedexRouter.post('/', async (req, res) => {
     await writeEntry(tx, detail);
     await syncVarieties(tx, dexNumber);
     await updateEvolution(tx, detail, fields.evolvesFrom, fields.evolutionHow);
+    await removeDraft(tx);
     return detail;
   });
   res.status(201).json({ slug: created.slug });

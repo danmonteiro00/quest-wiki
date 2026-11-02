@@ -6,6 +6,7 @@ import { Layout } from './components/Layout.jsx';
 import { AdminCatalogForm, AdminCatalogList } from './pages/admin/AdminCatalogPages.jsx';
 import { AdminDrawFormPage, AdminDrawsPage } from './pages/admin/AdminDrawsPages.jsx';
 import { AdminLogsPage } from './pages/admin/AdminLogsPage.jsx';
+import { AdminDraftPreviewPage } from './pages/admin/AdminDraftPreviewPage.jsx';
 import { AdminMapPage } from './pages/admin/AdminMapPage.jsx';
 import { AdminPokedexPage } from './pages/admin/AdminPokedexPage.jsx';
 import { AdminPokemonFormPage } from './pages/admin/AdminPokemonFormPage.jsx';
@@ -48,6 +49,8 @@ const router = createBrowserRouter([
           { path: 'usuarios', element: <AdminUsersPage /> },
           { path: 'pokedex', element: <AdminPokedexPage /> },
           { path: 'pokedex/novo', element: <AdminPokemonFormPage /> },
+          { path: 'pokedex/rascunhos/:draftId', element: <AdminPokemonFormPage key="draft" /> },
+          { path: 'pokedex/rascunhos/:draftId/previa', element: <AdminDraftPreviewPage /> },
           { path: 'pokedex/:slug', element: <AdminPokemonFormPage /> },
           { path: 'itemdex', element: <AdminCatalogList key="item" kind="item" /> },
           { path: 'itemdex/novo', element: <AdminCatalogForm key="item-new" kind="item" /> },
