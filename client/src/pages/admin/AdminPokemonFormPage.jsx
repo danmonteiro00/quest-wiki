@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { parseGender } from '../../../../shared/gender.js';
 import { slugify } from '../../../../shared/slug.js';
 import { forgetCached, request } from '../../api.js';
 import { ImageField } from '../../components/ImageField.jsx';
@@ -40,7 +41,8 @@ const emptyForm = () => ({
   captureRate: '',
   baseHappiness: '',
   hatchCounter: '',
-  gender: '',
+  genderMale: '',
+  genderFemale: '',
   growthRate: '',
   color: '',
   shape: '',
@@ -56,6 +58,8 @@ const emptyForm = () => ({
 });
 
 function toForm(detail) {
+  const gender = parseGender(detail.gender);
+  const hasGender = gender && (gender.male || gender.female);
   return {
     ...emptyForm(),
     name: detail.name,
@@ -77,7 +81,8 @@ function toForm(detail) {
     captureRate: blank(detail.captureRate),
     baseHappiness: blank(detail.baseHappiness),
     hatchCounter: blank(detail.hatchCounter),
-    gender: blank(detail.gender),
+    genderMale: hasGender ? gender.male : '',
+    genderFemale: hasGender ? gender.female : '',
     growthRate: blank(detail.growthRate),
     color: blank(detail.color),
     shape: blank(detail.shape),
@@ -310,7 +315,8 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
           <Input label="Amizade base" type="number" min="0" max="255" value={form.baseHappiness} onChange={set('baseHappiness')} />
           <Input label="Experiência base" type="number" min="0" value={form.baseExperience} onChange={set('baseExperience')} />
           <Input label="Crescimento" value={form.growthRate} onChange={set('growthRate')} />
-          <Input label="Gênero" value={form.gender} placeholder="50% male / 50% female" onChange={set('gender')} />
+          <Input label="% de macho" type="number" min="0" max="100" value={form.genderMale} placeholder="Sem gênero" onChange={set('genderMale')} />
+          <Input label="% de fêmea" type="number" min="0" max="100" value={form.genderFemale} placeholder="Sem gênero" onChange={set('genderFemale')} />
           <Input label="Ciclos de ovo" type="number" min="0" max="255" value={form.hatchCounter} onChange={set('hatchCounter')} />
           <Input label="Grupos de ovo (separe com vírgula)" value={form.eggGroups} onChange={set('eggGroups')} />
           <Input label="Itens (separe com vírgula)" value={form.heldItems} onChange={set('heldItems')} />
@@ -341,8 +347,6 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
       )}
 
       <MovesEditor moves={form.moves} onChange={set('moves')} />
-
-      <p className="admin-note">A efetividade de tipos é calculada a partir dos tipos escolhidos.</p>
     </>
   );
 }

@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { genderFromPercent } from '../../shared/gender.js';
 import { slugify } from '../../shared/slug.js';
+import { withEditedMoves } from '../catalog-store.js';
 import { getDb } from '../db.js';
 import { typeMatchups } from '../import/build-entries.js';
 import { deleteEntry, writeEntry } from '../pokedex-store.js';
@@ -7,13 +9,13 @@ import { array, fail, imageUrl, number, text } from '../validate.js';
 
 export const adminPokedexRouter = Router();
 
-const TYPES = new Set([
+export const TYPES = new Set([
   'normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground',
   'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy',
 ]);
 const STATS = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed'];
 const MOVE_METHODS = new Set(['level-up', 'machine', 'egg', 'tutor']);
-const MOVE_CATEGORIES = new Set(['physical', 'special', 'status']);
+export const MOVE_CATEGORIES = new Set(['physical', 'special', 'status']);
 const RESERVED_SLUGS = new Set(['novo']);
 // Acima de qualquer id da PokeAPI, para uma nova importacao nunca colidir com o que o Admin criou.
 const FIRST_CUSTOM_ID = 1000000;
@@ -164,6 +166,15 @@ function parseMoves(raw) {
   });
 }
 
+function parseGenderFields(raw) {
+  const male = number(raw?.genderMale, '% de macho', { max: 100, required: false }) ?? 0;
+  const female = number(raw?.genderFemale, '% de fêmea', { max: 100, required: false }) ?? 0;
+  if ((male || female) && male + female !== 100) {
+    fail(`Gênero: macho e fêmea somam ${male + female}%, precisam somar 100% (deixe os dois vazios para Sem gênero)`);
+  }
+  return genderFromPercent(male, female);
+}
+
 function parseFields(raw) {
   const name = text(raw?.name, 'Nome', 80);
   if (!name) fail('Nome: campo obrigatório');
@@ -190,7 +201,7 @@ function parseFields(raw) {
     captureRate: number(raw?.captureRate, 'Taxa de captura', { max: 255, required: false }),
     baseHappiness: number(raw?.baseHappiness, 'Amizade base', { max: 255, required: false }),
     hatchCounter: number(raw?.hatchCounter, 'Ciclos de ovo', { max: 255, required: false }),
-    gender: orNull(text(raw?.gender, 'Gênero', 80)),
+    gender: parseGenderFields(raw),
     growthRate: orNull(text(raw?.growthRate, 'Crescimento', 80)),
     color: orNull(text(raw?.color, 'Cor', 80)),
     shape: orNull(text(raw?.shape, 'Silhueta', 80)),
@@ -271,10 +282,11 @@ adminPokedexRouter.get('/', async (_req, res) => {
 });
 
 adminPokedexRouter.get('/:slug', async (req, res) => {
-  const detail = await readDetail(await getDb(), req.params.slug);
+  const db = await getDb();
+  const detail = await readDetail(db, req.params.slug);
   if (!detail) return res.status(404).json({ error: 'Pokémon não encontrado' });
   res.json({
-    ...detail,
+    ...await withEditedMoves(db, detail),
     evolvesFrom: findParent(detail.evolution, detail.slug)?.slug ?? '',
     evolutionHow: findNode(detail.evolution, detail.slug)?.how.join(' / ') ?? '',
   });

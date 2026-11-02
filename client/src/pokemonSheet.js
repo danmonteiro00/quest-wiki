@@ -1,3 +1,5 @@
+import { parseGender } from '../../shared/gender.js';
+
 // Ficha no formato do forum (BBCode). Os textos fixos, como o nivel, sao preenchidos pelo jogador depois.
 
 const TYPE_COLORS = {
@@ -35,10 +37,9 @@ const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const colored = (text, type) => (TYPE_COLORS[type] ? `[color=${TYPE_COLORS[type]}]${text}[/color]` : text);
 
-// O campo vem como "87.5% male / 12.5% female" ou "Genderless"; sem proporcao, nao mostra simbolo.
+// Sem proporcao de macho e femea, nao mostra simbolo.
 function genderSuffix(gender) {
-  const male = Number(/([\d.]+)%\s*male/i.exec(gender ?? '')?.[1] ?? 0);
-  const female = Number(/([\d.]+)%\s*female/i.exec(gender ?? '')?.[1] ?? 0);
+  const { male = 0, female = 0 } = parseGender(gender) ?? {};
   const symbols = `${male > 0 ? '♂' : ''}${female > 0 ? '♀' : ''}`;
   return symbols ? ` (${symbols})` : '';
 }

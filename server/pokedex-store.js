@@ -34,12 +34,18 @@ export async function deleteEntry(tx, slug) {
   );
 }
 
-// Fichas salvas quando a Pokedex ainda usava sprites: fica so a arte. O sprite so continua
-// se o Admin nao tiver cadastrado outra imagem, ate ele trocar pela arte.
-function withoutSprites(detail) {
+// Fichas salvas com dados antigos: fica so a arte, sem os locais da PokeAPI e com as descricoes traduzidas.
+// O sprite so continua se o Admin nao tiver cadastrado outra imagem, ate ele trocar pela arte.
+function refreshSaved(detail, translate) {
   const { sprite = [], ...rest } = detail;
   const art = (detail.art ?? []).filter((url) => !url.includes('/pokedex-sv/icon/'));
-  return { ...rest, art: art.length ? art : sprite };
+  return {
+    ...rest,
+    art: art.length ? art : sprite,
+    encounters: (detail.encounters ?? []).filter((encounter) => !encounter.versions?.length),
+    flavorTexts: (detail.flavorTexts ?? []).map((entry) => ({ ...entry, text: translate(entry.text) })),
+    abilities: (detail.abilities ?? []).map((ability) => ({ ...ability, effect: translate(ability.effect) })),
+  };
 }
 
 function relinkArt(detail, artOf) {
@@ -53,7 +59,7 @@ function relinkArt(detail, artOf) {
 }
 
 // Chamado por db:import depois de recriar pokedex_entry com os dados da PokeAPI.
-export async function applyOverrides(tx) {
+export async function applyOverrides(tx, translate) {
   const { rows } = await tx.query('SELECT slug, deleted, id, dex_number, detail FROM pokedex_override ORDER BY updated_at');
   const kept = [];
   for (const row of rows) {
@@ -61,7 +67,7 @@ export async function applyOverrides(tx) {
       await tx.query('DELETE FROM pokedex_entry WHERE slug = $1', [row.slug]);
       continue;
     }
-    const detail = withoutSprites(row.detail);
+    const detail = refreshSaved(row.detail, translate);
     kept.push({ ...row, detail });
     await upsertEntry(tx, row.id, row.slug, row.dex_number, summaryOf(detail), detail);
   }

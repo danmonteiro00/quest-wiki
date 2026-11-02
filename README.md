@@ -43,14 +43,27 @@ client/src/               site em React
 | `GET /api/pokemon/:slug` | Ficha completa (ex.: `rattata-alola`) |
 | `GET /api/map/:slug` | Conteúdo de uma área do mapa (ex.: `rota-05`) |
 | `GET /api/images/:id` | Imagem enviada pela Área Administrativa |
+| `GET /api/items`, `/api/moves` | Item DEX e Move DEX |
+| `GET /api/draws`, `POST /api/draws/:id/roll` | Sorteios; sortear exige login |
+| `GET /api/player/profile`, `/api/player/logs` | Área do Jogador |
 | `POST /api/auth/register`, `/login`, `/logout`, `GET /api/auth/me` | Cadastro e sessão |
-| `/api/admin/users`, `/pokedex`, `/map`, `/images` | Área Administrativa (Admin e Moderador) |
+| `/api/admin/users`, `/pokedex`, `/map`, `/images`, `/items`, `/moves`, `/draws`, `/logs` | Área Administrativa (Admin e Moderador) |
 | `GET /api/pokeapi` | Endpoints importados e quantidade de recursos |
 | `GET /api/pokeapi/:endpoint/:idOuNome` | Dado original da PokeAPI (ex.: `move/tackle`) |
 
 ## Imagens
 
 As imagens vêm direto do Serebii. Quando a forma não tem arte própria, a página usa a arte da forma base. Os sufixos ficam em [server/import/serebii.js](server/import/serebii.js); depois de mudar algum, rode `npm run db:import`.
+
+## Traduções
+
+As descrições ficam em [server/import/translations/](server/import/translations/), em dicionários de texto em inglês para texto em português. O que não está no dicionário continua em inglês. Nomes de Pokémon, habilidades, golpes, itens e tipos não são traduzidos. Depois de mudar um dicionário, rode `npm run db:import`.
+
+## Item DEX, Move DEX e Sorteios
+
+Itens, golpes e as habilidades do formulário da Pokédex ficam na tabela `catalog_entry`. A importação troca só as linhas vindas da PokeAPI; o que foi editado ou excluído na Área Administrativa continua como está. Mudar um golpe na Move DEX muda também a tabela de golpes das fichas.
+
+Cada sorteio é um dado: as faces de todos os resultados precisam somar o número de faces do dado. O servidor decide o resultado e grava em `draw_log` uma cópia dos nomes, então o histórico continua legível depois de excluir o sorteio ou o jogador.
 
 ## Mapa
 
@@ -67,7 +80,7 @@ Navegar pela wiki não exige login. As contas ficam em `app_user`, com senha pro
 | Perfil | Área Administrativa |
 | --- | --- |
 | Admin | Tudo, inclusive dar e tirar perfis |
-| Moderador | Pokédex e Mapa; em Usuários, só altera contas de Jogador |
+| Moderador | Pokédex, Mapa, Item DEX, Move DEX, Sorteios e LOG's; em Usuários, só altera contas de Jogador |
 | Game Master | Sem acesso, por enquanto |
 | Jogador | Sem acesso |
 

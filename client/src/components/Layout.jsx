@@ -49,6 +49,50 @@ function UsersIcon() {
   );
 }
 
+function ItemIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 8h14l1.5 12h-17z" />
+      <path d="M9 11V6.5a3 3 0 0 1 6 0V11" />
+    </svg>
+  );
+}
+
+function MoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z" />
+    </svg>
+  );
+}
+
+function DiceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" />
+    </svg>
+  );
+}
+
+function PlayerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 21c.7-4.2 3.6-6.5 7.5-6.5s6.8 2.3 7.5 6.5" />
+    </svg>
+  );
+}
+
+function LogIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 3h9l4 4v14H6z" />
+      <path d="M9.5 11h6M9.5 14.5h6M9.5 18h3.5" />
+    </svg>
+  );
+}
+
 function UserBar() {
   const { user, loading, logout } = useAuth();
   const { pathname } = useLocation();
@@ -67,10 +111,10 @@ function UserBar() {
   return (
     <div className="user-bar">
       <span className="user-avatar" aria-hidden="true">{user.username.charAt(0).toUpperCase()}</span>
-      <span className="user-text">
+      <Link className="user-text" to="/jogador" title="Área do Jogador">
         <span className="user-name">{user.username}</span>
         <span className="user-role">{ROLES[user.role]}</span>
-      </span>
+      </Link>
       <button type="button" className="user-action" onClick={logout}>Sair</button>
     </div>
   );
@@ -136,6 +180,24 @@ export function Layout() {
             <MapIcon />
             <span className="nav-label">Mapa</span>
           </NavLink>
+          <NavLink to="/itemdex" className="nav-item" title="Item DEX">
+            <ItemIcon />
+            <span className="nav-label">Item DEX</span>
+          </NavLink>
+          <NavLink to="/movedex" className="nav-item" title="Move DEX">
+            <MoveIcon />
+            <span className="nav-label">Move DEX</span>
+          </NavLink>
+          <NavLink to="/sorteios" className="nav-item" title="Sorteios">
+            <DiceIcon />
+            <span className="nav-label">Sorteios</span>
+          </NavLink>
+          {user && (
+            <NavLink to="/jogador" className="nav-item" title="Área do Jogador">
+              <PlayerIcon />
+              <span className="nav-label">Área do Jogador</span>
+            </NavLink>
+          )}
 
           {isStaff(user) && (
             <>
@@ -151,6 +213,22 @@ export function Layout() {
               <NavLink to="/admin/mapa" className="nav-item" title="Administrar mapa">
                 <MapIcon />
                 <span className="nav-label">Mapa</span>
+              </NavLink>
+              <NavLink to="/admin/itemdex" className="nav-item" title="Administrar Item DEX">
+                <ItemIcon />
+                <span className="nav-label">Item DEX</span>
+              </NavLink>
+              <NavLink to="/admin/movedex" className="nav-item" title="Administrar Move DEX">
+                <MoveIcon />
+                <span className="nav-label">Move DEX</span>
+              </NavLink>
+              <NavLink to="/admin/sorteios" className="nav-item" title="Administrar sorteios">
+                <DiceIcon />
+                <span className="nav-label">Sorteios</span>
+              </NavLink>
+              <NavLink to="/admin/logs" className="nav-item" title="LOG's dos Jogadores">
+                <LogIcon />
+                <span className="nav-label">LOG's</span>
               </NavLink>
             </>
           )}

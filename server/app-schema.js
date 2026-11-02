@@ -46,6 +46,43 @@ CREATE TABLE IF NOT EXISTS uploaded_image (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Item DEX, Move DEX e habilidades do formulario. db:import troca as linhas importadas;
+-- edited marca o que passou pelo CRUD, e deleted o que foi excluido nele.
+CREATE TABLE IF NOT EXISTS catalog_entry (
+  kind text NOT NULL,
+  slug text NOT NULL,
+  data json NOT NULL,
+  edited boolean NOT NULL DEFAULT false,
+  deleted boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (kind, slug)
+);
+
+CREATE TABLE IF NOT EXISTS draw (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  dice_faces integer NOT NULL,
+  outcomes json NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Copia nomes e itens: o LOG conta o que aconteceu, mesmo se o sorteio ou o jogador mudarem depois.
+CREATE TABLE IF NOT EXISTS draw_log (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id bigint REFERENCES app_user (id) ON DELETE SET NULL,
+  username text NOT NULL,
+  draw_id bigint REFERENCES draw (id) ON DELETE SET NULL,
+  draw_title text NOT NULL,
+  roll integer NOT NULL,
+  outcome_title text NOT NULL,
+  items json NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS draw_log_user_idx ON draw_log (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS draw_log_created_idx ON draw_log (created_at DESC);
+
 -- Primeira conta de Admin. So o hash da senha fica no codigo, e so entra se nao houver nenhum Admin.
 INSERT INTO app_user (username, email, password_hash, role)
 SELECT 'admin', 'admin@questwiki.local', 'scrypt$65536$8$1$+WiRudHDWNoN4MkjEWbciw==$H7781z069vdDYKojr/BUc1uTmsLUKPBgnutATdkDmKk=', 'admin'

@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Pagination } from '../components/Pagination.jsx';
 import { PokeImage } from '../components/PokeImage.jsx';
 import { capitalize, formatDex, TYPES, TypeBadge } from '../components/TypeBadge.jsx';
 import { useApi } from '../useApi.js';
+import { paginate, useListParams } from '../useListParams.js';
 
 const SORTS = {
   dex: { label: 'Número', compare: (a, b) => a.dexNumber - b.dexNumber || a.id - b.id },
@@ -14,22 +16,13 @@ const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 export function PokedexPage() {
   const { data, error } = useApi('/api/pokemon');
-  const [params, setParams] = useSearchParams();
+  const { params, setParam, page: requestedPage, setPage } = useListParams();
 
   const query = params.get('q') ?? '';
   const type = params.get('type') ?? '';
   const generation = params.get('gen') ?? '';
   const sort = SORTS[params.get('sort')] ? params.get('sort') : 'dex';
   const showForms = params.get('forms') === '1';
-
-  const setParam = (key, value) => {
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    }, { replace: true });
-  };
 
   const visible = useMemo(() => {
     if (!data) return [];
@@ -41,6 +34,9 @@ export function PokedexPage() {
       .filter((pokemon) => !term || pokemon.name.toLowerCase().includes(term) || String(pokemon.dexNumber) === term)
       .sort(SORTS[sort].compare);
   }, [data, query, type, generation, sort, showForms]);
+
+  const { rows, page, pageCount } = paginate(visible, requestedPage);
+  const pagination = <Pagination page={page} pageCount={pageCount} onChange={setPage} label="Páginas da Pokédex" />;
 
   return (
     <>
@@ -84,10 +80,11 @@ export function PokedexPage() {
       {!data && !error && <p className="notice">Carregando Pokédex…</p>}
       {data && !visible.length && <p className="notice">Nenhum Pokémon encontrado com esses filtros.</p>}
 
+      {pagination}
       <ul className="dex-grid">
-        {visible.map((pokemon) => (
+        {rows.map((pokemon) => (
           <li key={pokemon.id} className={`dex-card type-tint-${pokemon.types[0]}`}>
-            <Link to={pokemon.slug}>
+            <Link to={pokemon.slug} state={{ dexSearch: params.toString() }}>
               <span className="dex-number">{formatDex(pokemon.dexNumber)}</span>
               <PokeImage sources={pokemon.art} alt="" className="dex-art" width={96} height={96} />
               <span className="dex-name">{pokemon.name}</span>
@@ -98,6 +95,7 @@ export function PokedexPage() {
           </li>
         ))}
       </ul>
+      {pagination}
     </>
   );
 }

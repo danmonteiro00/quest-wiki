@@ -1,3 +1,4 @@
+import { genderFromPercent, parseGender } from '../../shared/gender.js';
 import { imagesFor } from './serebii.js';
 
 const titleize = (slug) => slug.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
@@ -31,14 +32,18 @@ const KEEP = {
   }),
   'pokemon-form': (d) => ({ id: d.id, name: d.name, names: d.names, form_names: d.form_names }),
   move: (d) => ({
-    name: d.name, names: d.names, type: d.type, damage_class: d.damage_class,
-    power: d.power, accuracy: d.accuracy, pp: d.pp,
+    id: d.id, name: d.name, names: d.names, type: d.type, damage_class: d.damage_class,
+    power: d.power, accuracy: d.accuracy, pp: d.pp, effect_chance: d.effect_chance,
+    effect_entries: d.effect_entries, flavor_text_entries: d.flavor_text_entries,
   }),
-  ability: (d) => ({ name: d.name, names: d.names, effect_entries: d.effect_entries, flavor_text_entries: d.flavor_text_entries }),
+  ability: (d) => ({ name: d.name, is_main_series: d.is_main_series, names: d.names, effect_entries: d.effect_entries, flavor_text_entries: d.flavor_text_entries }),
+  item: (d) => ({
+    id: d.id, name: d.name, names: d.names, category: d.category, cost: d.cost, sprites: d.sprites,
+    effect_entries: d.effect_entries, flavor_text_entries: d.flavor_text_entries,
+  }),
   'evolution-chain': (d) => d,
   type: (d) => ({ id: d.id, name: d.name, damage_relations: d.damage_relations }),
   'version-group': (d) => ({ name: d.name, order: d.order }),
-  'pokemon-encounters': (d) => d,
 };
 
 export function createCollector() {
@@ -55,8 +60,8 @@ const byName = (map) => new Map([...map.values()].map((item) => [item.name, item
 
 function genderLabel(rate) {
   if (rate === -1) return 'Genderless';
-  const female = (rate / 8) * 100;
-  return `${100 - female}% male / ${female}% female`;
+  const { male, female } = parseGender(`${(rate / 8) * 100}% female`);
+  return genderFromPercent(male, female);
 }
 
 export function typeMatchups(types, attackers) {
@@ -136,14 +141,60 @@ function pickMoves(pokemon, moves, groups) {
   return { versionGroup: newest, rows };
 }
 
-function encounterSummary(encounters) {
-  return (encounters ?? []).map((encounter) => ({
-    area: titleize(encounter.location_area.name),
-    versions: encounter.version_details.map((v) => v.version.name),
-  }));
+export function abilityEffect(ability) {
+  return cleanText(english(ability?.effect_entries)?.short_effect
+    ?? english(ability?.flavor_text_entries)?.flavor_text
+    ?? '');
 }
 
-export function buildEntries({ store }) {
+// Golpes e itens chamam o campo de flavor_text ou de text, conforme o endpoint; o ultimo e o do jogo mais novo.
+function latestFlavor(entry) {
+  const texts = entry.flavor_text_entries.filter((item) => item.language.name === 'en');
+  return texts.at(-1)?.flavor_text ?? texts.at(-1)?.text ?? '';
+}
+
+// O que nao tem como aparecer no RPG: itens fora dos jogos e os cristais de Dynamax de cada especie.
+const HIDDEN_ITEM_CATEGORIES = new Set(['unused', 'dynamax-crystals']);
+
+export const moveDescription = (move) => cleanText(english(move.effect_entries)?.short_effect ?? latestFlavor(move));
+export const itemDescription = (item) => cleanText(english(item.effect_entries)?.short_effect ?? latestFlavor(item));
+export const shownItems = (items) => items.filter((item) => !HIDDEN_ITEM_CATEGORIES.has(item.category.name) && itemDescription(item));
+export const shownMoves = (moves) => moves.filter((move) => move.id < 10000);
+
+export function buildCatalog({ store }, translate) {
+  const abilities = [...store.ability.values()].filter((ability) => ability.is_main_series).map((ability) => ({
+    kind: 'ability',
+    data: { slug: ability.name, name: english(ability.names)?.name ?? ability.name, effect: translate(abilityEffect(ability)) },
+  }));
+  const moves = shownMoves([...store.move.values()]).map((move) => ({
+    kind: 'move',
+    data: {
+      slug: move.name,
+      name: english(move.names)?.name ?? titleize(move.name),
+      type: move.type?.name ?? null,
+      category: move.damage_class?.name ?? null,
+      power: move.power,
+      accuracy: move.accuracy,
+      pp: move.pp,
+      // O texto da PokeAPI diz so "tem chance"; o numero fica em outro campo.
+      description: [translate(moveDescription(move)), move.effect_chance && `Chance: ${move.effect_chance}%.`].filter(Boolean).join(' '),
+    },
+  }));
+  const items = shownItems([...store.item.values()]).map((item) => ({
+    kind: 'item',
+    data: {
+      slug: item.name,
+      name: english(item.names)?.name ?? titleize(item.name),
+      category: titleize(item.category.name),
+      cost: item.cost,
+      image: item.sprites?.default ?? '',
+      description: translate(itemDescription(item)),
+    },
+  }));
+  return [...abilities, ...moves, ...items];
+}
+
+export function buildEntries({ store }, translate) {
   const speciesMap = store['pokemon-species'];
   const moves = byName(store.move);
   const abilities = byName(store.ability);
@@ -302,13 +353,11 @@ export function buildEntries({ store }) {
           slug: entry.ability.name,
           name: english(ability?.names)?.name ?? titleize(entry.ability.name),
           isHidden: entry.is_hidden,
-          effect: cleanText(english(ability?.effect_entries)?.short_effect
-            ?? english(ability?.flavor_text_entries)?.flavor_text
-            ?? ''),
+          effect: translate(abilityEffect(ability)),
         };
       }),
       matchups: typeMatchups(types, attackers),
-      flavorTexts: [...flavorTexts].map(([text, versions]) => ({ text, versions })),
+      flavorTexts: [...flavorTexts].map(([text, versions]) => ({ text: translate(text), versions })),
       pokedexNumbers: species.pokedex_numbers.map((n) => ({ pokedex: titleize(n.pokedex.name), number: n.entry_number })),
       evolution: species.evolution_chain
         ? evolutionTreeFor(pokemon, store['evolution-chain'].get(idFromUrl(species.evolution_chain.url)).chain)
@@ -330,7 +379,8 @@ export function buildEntries({ store }) {
         : [],
       moves: ownMoves ?? pickMoves(defaultPokemon, moves, groups),
       movesInherited: !ownMoves && defaultPokemon !== pokemon,
-      encounters: encounterSummary(store['pokemon-encounters'].get(pokemon.id)),
+      // Os locais sao os do RPG, cadastrados depois; os dos jogos nao valem aqui.
+      encounters: [],
     };
 
     entries.push({ id: pokemon.id, slug: pokemon.name, dexNumber: species.id, summary, detail });

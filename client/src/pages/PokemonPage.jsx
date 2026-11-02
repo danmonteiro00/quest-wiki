@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { genderText } from '../../../shared/gender.js';
 import { PokeImage } from '../components/PokeImage.jsx';
 import { capitalize, formatDex, TypeBadge } from '../components/TypeBadge.jsx';
 import { buildPokemonSheet, copyText } from '../pokemonSheet.js';
@@ -71,39 +72,11 @@ function Stats({ stats, total }) {
   );
 }
 
-function Matchups({ matchups }) {
-  const groups = [
-    ['Fraquezas', ([, value]) => value > 1],
-    ['Resistências', ([, value]) => value > 0 && value < 1],
-    ['Imunidades', ([, value]) => value === 0],
-  ];
-  return (
-    <div className="matchups">
-      {groups.map(([label, test]) => {
-        const items = Object.entries(matchups).filter(test).sort((a, b) => b[1] - a[1]);
-        if (!items.length) return null;
-        return (
-          <div key={label}>
-            <h3>{label}</h3>
-            <ul className="matchup-list">
-              {items.map(([type, value]) => (
-                <li key={type}>
-                  <TypeBadge type={type} />
-                  <span className="multiplier">×{value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function EvolutionNode({ node, current }) {
+  const { state } = useLocation();
   return (
     <div className="evo-branch">
-      <Link to={siblingLink(node.slug)} className={`evo-pokemon${node.slug === current ? ' is-current' : ''}`} aria-current={node.slug === current ? 'page' : undefined}>
+      <Link to={siblingLink(node.slug)} state={state} className={`evo-pokemon${node.slug === current ? ' is-current' : ''}`} aria-current={node.slug === current ? 'page' : undefined}>
         <PokeImage sources={node.art} alt="" width={72} height={72} />
         <span>{node.name}</span>
         <small>{formatDex(node.dexNumber)}</small>
@@ -206,6 +179,9 @@ function CopySheetButton({ pokemon, artUrl }) {
 
 export function PokemonPage() {
   const { slug } = useParams();
+  const { state } = useLocation();
+  // Volta para a mesma pagina e os mesmos filtros de onde o Pokemon foi aberto.
+  const backTo = state?.dexSearch ? `..?${state.dexSearch}` : '..';
   const { data: pokemon, error } = useApi(`/api/pokemon/${encodeURIComponent(slug)}`);
   // A ficha copiada usa a mesma imagem que carregou na tela, que pode ser a reserva.
   const [loadedArt, setLoadedArt] = useState(null);
@@ -213,7 +189,7 @@ export function PokemonPage() {
   if (error) {
     return (
       <>
-        <Link to=".." relative="path" className="back-link">← Pokédex</Link>
+        <Link to={backTo} relative="path" className="back-link">← Pokédex</Link>
         <p className="notice notice--error">{error.status === 404 ? 'Pokémon não encontrado.' : 'Não foi possível carregar este Pokémon.'}</p>
       </>
     );
@@ -228,7 +204,7 @@ export function PokemonPage() {
 
   return (
     <article key={pokemon.slug} className="pokemon">
-      <Link to=".." relative="path" className="back-link">← Pokédex</Link>
+      <Link to={backTo} relative="path" className="back-link">← Pokédex</Link>
 
       <header className={`hero type-tint-${pokemon.types[0]}`}>
         <CopySheetButton pokemon={pokemon} artUrl={loadedArt?.slug === pokemon.slug ? loadedArt.url : pokemon.art[0]} />
@@ -250,42 +226,26 @@ export function PokemonPage() {
           <Stats stats={pokemon.stats} total={pokemon.statTotal} />
         </Section>
 
-        <Section title="Dados">
-          <Facts rows={[
-            ['Altura', `${pokemon.height} m`],
-            ['Peso', `${pokemon.weight} kg`],
-            ['Geração', `${pokemon.generation}ª`],
-            ['Forma', pokemon.formName],
-            ['Cor', pokemon.color],
-            ['Silhueta', pokemon.shape],
-            ['Habitat', pokemon.habitat],
-            ['Taxa de captura', pokemon.captureRate],
-            ['Amizade base', pokemon.baseHappiness],
-            ['Experiência base', pokemon.baseExperience],
-            ['Crescimento', pokemon.growthRate],
-            ['Gênero', pokemon.gender],
-            ['Grupos de ovo', pokemon.eggGroups.join(', ')],
-            ['Ciclos de ovo', pokemon.hatchCounter],
-            ['EVs', pokemon.evYield.map((ev) => `${ev.value} ${STAT_LABELS[ev.stat] ?? ev.stat}`).join(', ')],
-            ['Itens', pokemon.heldItems.join(', ')],
-          ]} />
-        </Section>
+        <div className="panel-stack">
+          <Section title="Dados">
+            <Facts rows={[
+              ['Gênero', genderText(pokemon.gender)],
+              ['Item', pokemon.heldItems.join(', ') || 'Nenhum'],
+            ]} />
+          </Section>
 
-        <Section title="Habilidades">
-          <ul className="abilities">
-            {pokemon.abilities.map((ability) => (
-              <li key={ability.slug}>
-                <strong>{ability.name}</strong>
-                {ability.isHidden && <span className="tag">Oculta</span>}
-                <p>{ability.effect}</p>
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section title="Efetividade de tipos">
-          <Matchups matchups={pokemon.matchups} />
-        </Section>
+          <Section title="Habilidades">
+            <ul className="abilities">
+              {pokemon.abilities.map((ability) => (
+                <li key={ability.slug}>
+                  <strong>{ability.name}</strong>
+                  {ability.isHidden && <span className="tag">Oculta</span>}
+                  <p>{ability.effect}</p>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        </div>
       </div>
 
       {pokemon.evolution && (
@@ -301,7 +261,7 @@ export function PokemonPage() {
           <ul className="varieties">
             {pokemon.varieties.map((variety) => (
               <li key={variety.slug}>
-                <Link to={siblingLink(variety.slug)} className={variety.slug === pokemon.slug ? 'is-current' : ''} aria-current={variety.slug === pokemon.slug ? 'page' : undefined}>
+                <Link to={siblingLink(variety.slug)} state={state} className={variety.slug === pokemon.slug ? 'is-current' : ''} aria-current={variety.slug === pokemon.slug ? 'page' : undefined}>
                   <PokeImage sources={variety.art} alt="" width={64} height={64} />
                   <span>{variety.name}</span>
                 </Link>
@@ -323,45 +283,18 @@ export function PokemonPage() {
         </Section>
       )}
 
-      <div className="panel-grid">
-        {pokemon.flavorTexts.length > 0 && (
-          <Section title="Entradas da Pokédex">
-            <ul className="flavor-list">
-              {pokemon.flavorTexts.map((entry) => (
-                <li key={entry.text}>
-                  <p>{entry.text}</p>
-                  <small>{entry.versions.join(', ')}</small>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        )}
-
-        <div className="panel-stack">
-          {pokemon.pokedexNumbers.length > 0 && (
-            <Section title="Números regionais">
-              <ul className="regional">
-                {pokemon.pokedexNumbers.map((entry) => (
-                  <li key={entry.pokedex}><span>{entry.pokedex}</span><strong>{entry.number}</strong></li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {pokemon.encounters.length > 0 && (
-            <Section title="Onde encontrar">
-              <ul className="encounters">
-                {pokemon.encounters.map((encounter) => (
-                  <li key={encounter.area}>
-                    <span>{encounter.area}</span>
-                    <small>{encounter.versions.join(', ')}</small>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-        </div>
-      </div>
+      {pokemon.encounters.length > 0 && (
+        <Section title="Onde encontrar" className="panel--wide">
+          <ul className="encounters">
+            {pokemon.encounters.map((encounter) => (
+              <li key={encounter.area}>
+                <span>{encounter.area}</span>
+                <small>{encounter.versions.join(', ')}</small>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
     </article>
   );
 }

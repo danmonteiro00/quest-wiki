@@ -78,6 +78,13 @@ export async function currentUser(req) {
   return rows[0] ?? null;
 }
 
+export async function requireUser(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  req.user = await currentUser(req);
+  if (!req.user) return res.status(401).json({ error: 'Entre com a sua conta para continuar' });
+  next();
+}
+
 export async function requireStaff(req, res, next) {
   res.set('Cache-Control', 'no-store');
   req.user = await currentUser(req);

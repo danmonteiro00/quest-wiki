@@ -1,10 +1,11 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip } from 'node:zlib';
 import tar from 'tar-stream';
 import { getDb } from '../db.js';
-import { buildEntries, createCollector } from './build-entries.js';
+import { replaceImportedCatalog } from '../catalog-store.js';
+import { buildCatalog, buildEntries, createCollector } from './build-entries.js';
 import { applyOverrides } from '../pokedex-store.js';
 
 // O repositorio oficial traz a API inteira em um unico arquivo, em vez de ~15 mil requisicoes.
@@ -12,6 +13,18 @@ const TARBALL_URL = 'https://codeload.github.com/PokeAPI/api-data/tar.gz/refs/he
 const TARBALL_PATH = '.data/api-data.tar.gz';
 const RESOURCE_PATH = /^[^/]+\/data\/api\/v2\/([a-z-]+)\/(\d+)\/(encounters\/)?index\.json$/;
 const BATCH_BYTES = 4 * 1024 * 1024;
+
+// Dicionarios de translations/: texto em ingles -> traducao. O que ainda nao foi traduzido fica em ingles.
+function loadTranslator() {
+  const folder = new URL('./translations/', import.meta.url);
+  const dictionary = new Map();
+  for (const file of readdirSync(folder)) {
+    for (const [source, target] of Object.entries(JSON.parse(readFileSync(new URL(file, folder), 'utf8')))) {
+      dictionary.set(source, target);
+    }
+  }
+  return (text) => dictionary.get(text) ?? text;
+}
 
 async function ensureTarball() {
   if (existsSync(TARBALL_PATH) && !process.argv.includes('--refresh')) {
@@ -102,10 +115,13 @@ await db.transaction(async (tx) => {
   await tx.query('TRUNCATE pokeapi_resource, pokedex_entry');
   const collector = createCollector();
   const total = await importResources(tx, collector);
-  const entries = buildEntries(collector);
+  const translate = loadTranslator();
+  const entries = buildEntries(collector, translate);
   await insertEntries(tx, entries);
-  const overrides = await applyOverrides(tx);
-  console.log(`Concluido: ${total} recursos da PokeAPI, ${entries.length} entradas na Pokedex, ${overrides} edicoes reaplicadas`);
+  const overrides = await applyOverrides(tx, translate);
+  const catalog = buildCatalog(collector, translate);
+  await replaceImportedCatalog(tx, catalog, translate);
+  console.log(`Concluido: ${total} recursos da PokeAPI, ${entries.length} entradas na Pokedex, ${overrides} edicoes reaplicadas, ${catalog.length} itens, golpes e habilidades`);
 });
 
 const { rows } = await db.query(`
