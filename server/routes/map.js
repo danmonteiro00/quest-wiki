@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { findArea } from '../../shared/map-areas.js';
 import { getDb } from '../db.js';
-import { array, fail, imageUrl, isHttpUrl, number, text } from '../validate.js';
+import { array, fail, imageUrl, isImageUrl, number, text } from '../validate.js';
 import { cacheEditable } from './cache.js';
 
 export const mapRouter = Router();
@@ -25,9 +25,9 @@ function requireArea(req, res, next) {
 function parseResource(raw) {
   const name = text(raw?.name, 'Nome do recurso', 80);
   if (!name) fail('Todo recurso precisa de um nome');
-  // O icone pode ser um emoji ou o endereco de uma imagem.
+  // O icone pode ser um emoji, o endereco de uma imagem ou um arquivo enviado.
   const icon = text(raw?.icon, `Ícone de ${name}`, 500);
-  if (icon.length > 8 && !isHttpUrl(icon)) fail(`Ícone de ${name}: use um emoji ou um endereço http(s)`);
+  if (icon.length > 8 && !isImageUrl(icon)) fail(`Ícone de ${name}: use um emoji, um endereço http(s) ou envie um arquivo`);
   return { icon, name, description: text(raw?.description, `Descrição de ${name}`, 2000) };
 }
 

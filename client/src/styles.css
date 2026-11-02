@@ -563,7 +563,8 @@ button, input, select { font: inherit; color: inherit; }
 .tabs button:hover { border-color: var(--accent); }
 .tabs button.is-active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-.table-scroll { overflow-x: auto; }
+/* relative: o texto oculto dos cabecalhos tem de rolar junto, sem alargar a pagina. */
+.table-scroll { position: relative; overflow-x: auto; }
 .moves { width: 100%; min-width: 540px; border-collapse: collapse; font-size: 0.93rem; }
 .moves th { text-align: left; color: var(--muted); font-size: 0.78rem; border-bottom: 1px solid var(--line); padding: 6px 10px; white-space: nowrap; }
 .moves td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
@@ -774,7 +775,7 @@ a.poke-slot:hover { border-color: var(--accent); }
 .resources summary:hover { color: var(--accent); }
 .resources p { margin: 0 0 10px; color: var(--muted); white-space: pre-line; }
 
-.resource-icon { flex: none; width: 24px; height: 24px; font-size: 1.15rem; line-height: 24px; text-align: center; object-fit: contain; }
+.resource-icon { flex: none; width: 28px; height: 28px; font-size: 1.15rem; line-height: 28px; text-align: center; object-fit: contain; }
 
 @media (max-width: 760px) {
   .map-page--open {
@@ -884,6 +885,8 @@ a.poke-slot:hover { border-color: var(--accent); }
 }
 
 .admin-wide { grid-column: 1 / -1; }
+.admin-resource--wide { grid-template-columns: minmax(0, 1fr) auto; }
+.image-field-preview--icon { width: 28px; height: 28px; }
 
 .search-select-list {
   position: fixed;

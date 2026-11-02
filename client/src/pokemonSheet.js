@@ -1,4 +1,4 @@
-// Ficha no formato do forum (BBCode). Os textos fixos, como nivel e item, sao preenchidos pelo jogador depois.
+// Ficha no formato do forum (BBCode). Os textos fixos, como o nivel, sao preenchidos pelo jogador depois.
 
 const TYPE_COLORS = {
   normal: '#ada594',
@@ -78,7 +78,7 @@ export function buildPokemonSheet(pokemon, artUrl) {
     '[b]Nível 05[/b]',
     '[00/00] ',
     `[b]Habilidade[/b]: ${abilityLine(pokemon.abilities)}`,
-    '[b]Item[/b]: Nenhum',
+    `[b]Item[/b]: ${pokemon.heldItems?.length ? pokemon.heldItems.join(', ') : 'Nenhum'}`,
     `${statsBlock(pokemon)}[b]Moveset[/b]`,
     '',
     ...movesetLines(pokemon.moves),

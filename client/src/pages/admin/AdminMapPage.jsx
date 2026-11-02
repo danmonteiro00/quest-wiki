@@ -59,16 +59,22 @@ function ResourceEditor({ resources, onChange }) {
   return (
     <>
       {resources.map((resource, index) => (
-        <fieldset className="admin-resource" key={index}>
-          <label className="field admin-icon">
-            Ícone
-            <input value={resource.icon} placeholder="🌿" onChange={(event) => update(index, 'icon', event.target.value)} />
-          </label>
+        <fieldset className="admin-resource admin-resource--wide" key={index}>
           <label className="field">
             Nome
             <input value={resource.name} required onChange={(event) => update(index, 'name', event.target.value)} />
           </label>
           <button type="button" className="button button--quiet" onClick={() => onChange(resources.filter((_, i) => i !== index))}>Remover</button>
+          <div className="admin-wide">
+            <ImageField
+              label="Ícone"
+              value={resource.icon}
+              placeholder="🌿 ou https://..."
+              maxSide={128}
+              previewClass="image-field-preview--icon"
+              onChange={(icon) => update(index, 'icon', icon)}
+            />
+          </div>
           <label className="field admin-wide">
             Descrição
             <textarea rows={2} value={resource.description} onChange={(event) => update(index, 'description', event.target.value)} />

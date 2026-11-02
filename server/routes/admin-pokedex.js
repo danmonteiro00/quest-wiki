@@ -23,7 +23,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const textList = (value, label) => array(value).map((item) => text(item, label, 80)).filter(Boolean);
 const orNull = (value) => value || null;
 
-// Evolucao: a mesma arvore fica copiada na ficha de cada Pokemon da cadeia.
+// Evolucao: cada ficha guarda a cadeia vista pela propria forma, entao as mudancas sao aplicadas ficha a ficha.
 
 function findNode(node, slug) {
   if (!node) return null;
@@ -62,25 +62,49 @@ async function readDetail(db, slug) {
   return rows[0]?.detail ?? null;
 }
 
-// Regrava a cadeia nas fichas, inclusive nas formas regionais, que mostram a mesma evolucao.
-async function setChain(tx, dexNumbers, tree) {
-  const chain = chainOrNull(tree);
+function withoutNode(tree, slug) {
+  if (!tree || tree.slug === slug) return null;
+  return { ...tree, evolvesTo: tree.evolvesTo.filter((next) => next.slug !== slug).map((next) => withoutNode(next, slug)) };
+}
+
+function withNodeFields(tree, slug, fields) {
+  const node = tree.slug === slug ? { ...tree, ...fields } : tree;
+  return { ...node, evolvesTo: node.evolvesTo.map((next) => withNodeFields(next, slug, fields)) };
+}
+
+function withChild(tree, parentSlug, child) {
+  const evolvesTo = tree.evolvesTo.map((next) => withChild(next, parentSlug, child));
+  return { ...tree, evolvesTo: tree.slug === parentSlug ? [...evolvesTo, child] : evolvesTo };
+}
+
+async function chainRows(tx, dexNumbers) {
   const { rows } = await tx.query('SELECT detail FROM pokedex_entry WHERE dex_number = ANY($1::int[])', [[...new Set(dexNumbers)]]);
-  for (const { detail } of rows) {
-    if (JSON.stringify(detail.evolution) === JSON.stringify(chain)) continue;
-    await writeEntry(tx, { ...detail, evolution: chain });
+  return rows.map((row) => row.detail);
+}
+
+async function saveChain(tx, detail, evolution) {
+  if (JSON.stringify(detail.evolution) !== JSON.stringify(evolution)) await writeEntry(tx, { ...detail, evolution });
+}
+
+async function patchChains(tx, dexNumbers, change) {
+  for (const detail of await chainRows(tx, dexNumbers)) {
+    if (detail.evolution) await saveChain(tx, detail, chainOrNull(change(detail.evolution)));
   }
+}
+
+async function setChain(tx, dexNumbers, tree) {
+  for (const detail of await chainRows(tx, dexNumbers)) await saveChain(tx, detail, chainOrNull(tree));
 }
 
 async function updateEvolution(tx, detail, evolvesFrom, how) {
   const previous = detail.evolution ? clone(detail.evolution) : null;
   const previousParent = findParent(previous, detail.slug);
   const node = findNode(previous, detail.slug) ?? nodeFrom(detail);
-  Object.assign(node, { name: detail.name, dexNumber: detail.dexNumber, sprite: detail.sprite });
-  node.how = evolvesFrom && how ? [how] : [];
+  const fields = { name: detail.name, dexNumber: detail.dexNumber, sprite: detail.sprite, how: evolvesFrom && how ? [how] : [] };
+  Object.assign(node, fields);
 
   if ((previousParent?.slug ?? '') === evolvesFrom) {
-    if (previous) await setChain(tx, dexNumbersIn(previous), previous);
+    if (previous) await patchChains(tx, dexNumbersIn(previous), (tree) => withNodeFields(tree, detail.slug, fields));
     return;
   }
 
@@ -90,21 +114,23 @@ async function updateEvolution(tx, detail, evolvesFrom, how) {
     if (!parent || !parent.isDefault) fail('Evolui de: escolha um Pokémon da Pokédex');
   }
 
-  if (previousParent) {
-    previousParent.evolvesTo = previousParent.evolvesTo.filter((next) => next.slug !== detail.slug);
-    await setChain(tx, dexNumbersIn(previous), previous);
-  }
+  const moved = dexNumbersIn(node);
+  const others = (dexNumbers) => dexNumbers.filter((dexNumber) => !moved.includes(dexNumber));
+
+  if (previous) await patchChains(tx, others(dexNumbersIn(previous)), (tree) => withoutNode(tree, detail.slug));
 
   if (!evolvesFrom) {
-    await setChain(tx, dexNumbersIn(node), node);
+    await setChain(tx, moved, node);
     return;
   }
 
-  // Le depois de regravar a cadeia antiga, que pode ser a mesma do novo pre-evolucao.
+  // Le depois de atualizar a cadeia antiga, que pode ser a mesma do novo pre-evolucao.
   const parent = await readDetail(tx, evolvesFrom);
   const tree = parent.evolution ? clone(parent.evolution) : nodeFrom(parent);
   findNode(tree, evolvesFrom).evolvesTo.push(node);
-  await setChain(tx, dexNumbersIn(tree), tree);
+  await patchChains(tx, others(dexNumbersIn(tree)), (current) => withChild(current, evolvesFrom, node));
+  await saveChain(tx, await readDetail(tx, evolvesFrom), tree);
+  await setChain(tx, moved, tree);
 }
 
 // A lista de formas fica copiada na ficha de cada forma da mesma especie.
@@ -273,6 +299,10 @@ adminPokedexRouter.post('/', async (req, res) => {
       if (!base || !base.isDefault) fail('Forma Regional: escolha o Pokémon de origem');
       const detail = mergeFields(base, fields, matchups);
       Object.assign(detail, { id: await nextId(tx), slug, isDefault: false });
+      // A forma aparece na propria cadeia no lugar do Pokemon de origem.
+      if (detail.evolution) {
+        detail.evolution = withNodeFields(detail.evolution, base.slug, { slug, name: detail.name, sprite: detail.sprite });
+      }
       await writeEntry(tx, detail);
       await syncVarieties(tx, detail.dexNumber);
       return detail;
@@ -304,6 +334,10 @@ adminPokedexRouter.put('/:slug', async (req, res) => {
     await writeEntry(tx, detail);
     await syncVarieties(tx, detail.dexNumber);
     if (detail.isDefault) await updateEvolution(tx, await readDetail(tx, detail.slug), fields.evolvesFrom, fields.evolutionHow);
+    else if (detail.evolution) {
+      const shown = { name: detail.name, sprite: detail.sprite };
+      await patchChains(tx, dexNumbersIn(detail.evolution), (tree) => withNodeFields(tree, detail.slug, shown));
+    }
   });
   res.json({ slug: current.slug });
 });
@@ -321,16 +355,8 @@ adminPokedexRouter.delete('/:slug', async (req, res) => {
   await db.transaction(async (tx) => {
     await deleteEntry(tx, current.slug);
 
-    if (current.isDefault) {
-      const tree = current.evolution ? clone(current.evolution) : null;
-      const parent = findParent(tree, current.slug);
-      if (parent) {
-        parent.evolvesTo = parent.evolvesTo.filter((next) => next.slug !== current.slug);
-        await setChain(tx, dexNumbersIn(tree), tree);
-      }
-    } else {
-      await syncVarieties(tx, current.dexNumber);
-    }
+    if (current.evolution) await patchChains(tx, dexNumbersIn(current.evolution), (tree) => withoutNode(tree, current.slug));
+    if (!current.isDefault) await syncVarieties(tx, current.dexNumber);
 
     // Tira o Pokemon das areas do mapa, senao a proxima edicao dessas areas seria recusada.
     const { rows } = await tx.query('SELECT slug, content FROM map_area');

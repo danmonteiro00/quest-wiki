@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { request } from '../api.js';
 
-const MAX_SIDE = 1600;
 const MAX_BYTES = 2 * 1024 * 1024;
 const QUALITIES = [0.85, 0.6];
 
 const encode = (canvas, quality) => new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
 
 // Reduz no navegador antes de enviar: as imagens ficam no banco, que tem espaco limitado.
-async function shrink(file) {
+async function shrink(file, maxSide) {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
@@ -23,7 +22,9 @@ async function shrink(file) {
   throw new Error('A imagem continua grande demais depois de reduzida');
 }
 
-export function ImageField({ label, value, onChange }) {
+const isImage = (value) => /^(https?:\/\/|\/api\/images\/)/.test(value);
+
+export function ImageField({ label, value, onChange, maxSide = 1600, placeholder = 'https://...', previewClass = '' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -34,7 +35,7 @@ export function ImageField({ label, value, onChange }) {
     setBusy(true);
     setError(null);
     try {
-      const { url } = await request('/api/admin/images', { method: 'POST', blob: await shrink(file) });
+      const { url } = await request('/api/admin/images', { method: 'POST', blob: await shrink(file, maxSide) });
       onChange(url);
     } catch (failure) {
       setError(failure.message || 'Não foi possível usar esta imagem');
@@ -48,7 +49,7 @@ export function ImageField({ label, value, onChange }) {
       <div className="image-field-row">
         <label className="field">
           {label}
-          <input value={value} placeholder="https://..." onChange={(event) => onChange(event.target.value)} />
+          <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
         </label>
         <label className="button button--quiet file-button">
           {busy ? 'Enviando…' : 'Enviar do computador'}
@@ -56,7 +57,7 @@ export function ImageField({ label, value, onChange }) {
         </label>
       </div>
       {error && <p className="notice notice--error" role="alert">{error}</p>}
-      {value && <img className="image-field-preview" src={value} alt={`Prévia: ${label}`} />}
+      {isImage(value) && <img className={`image-field-preview ${previewClass}`} src={value} alt={`Prévia: ${label}`} />}
     </div>
   );
 }

@@ -17,8 +17,8 @@ const STAT_MAX = 255;
 
 const METHOD_LABELS = {
   'level-up': 'Nível',
-  machine: 'Máquina',
-  egg: 'Ovo',
+  machine: "TM's",
+  egg: 'Egg Moves',
   tutor: 'Tutor',
 };
 

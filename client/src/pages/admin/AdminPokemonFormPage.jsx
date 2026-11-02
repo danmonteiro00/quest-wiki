@@ -15,7 +15,7 @@ const STATS = [
   ['special-defense', 'Sp. Def'],
   ['speed', 'Speed'],
 ];
-const MOVE_METHODS = [['level-up', 'Nível'], ['machine', 'Máquina'], ['egg', 'Ovo'], ['tutor', 'Tutor']];
+const MOVE_METHODS = [['level-up', 'Nível'], ['machine', "TM's"], ['egg', 'Egg Moves'], ['tutor', 'Tutor']];
 const MOVE_CATEGORIES = ['physical', 'special', 'status'];
 
 const blank = (value) => value ?? '';
@@ -326,7 +326,7 @@ function PokemonFields({ form, setForm, regional, editing, species }) {
       </div>
 
       {regional ? (
-        <p className="admin-note">A evolução é a mesma do Pokémon de origem.</p>
+        <p className="admin-note">A forma herda os métodos de evolução do Pokémon de origem.</p>
       ) : (
         <div className="admin-block">
           <h2>Evolução</h2>

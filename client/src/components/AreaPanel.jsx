@@ -42,7 +42,7 @@ function PokemonSlots({ section }) {
 }
 
 function ResourceIcon({ icon }) {
-  if (/^https?:\/\//.test(icon)) return <img className="resource-icon" src={icon} alt="" width={24} height={24} />;
+  if (/^(https?:\/\/|\/api\/images\/)/.test(icon)) return <img className="resource-icon" src={icon} alt="" width={28} height={28} />;
   return <span className="resource-icon" aria-hidden="true">{icon || '•'}</span>;
 }
 

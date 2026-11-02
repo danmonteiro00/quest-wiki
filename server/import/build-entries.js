@@ -168,17 +168,78 @@ export function buildEntries({ store }) {
 
   const defaultOf = (species) => pokemonByName.get(species.varieties.find((v) => v.is_default).pokemon.name);
 
-  const evolutionNode = (link) => {
-    const species = speciesMap.get(idFromUrl(link.species.url));
-    const pokemon = defaultOf(species);
-    return {
-      slug: pokemon.name,
-      name: displayName(pokemon, species),
-      dexNumber: species.id,
-      sprite: imagesOf(pokemon, species).sprite,
-      how: describeEvolutions(link.evolution_details),
-      evolvesTo: link.evolves_to.map(evolutionNode),
+  const speciesOfLink = (link) => speciesMap.get(idFromUrl(link.species.url));
+
+  // A regra pode citar uma forma so visual (ex.: burmy-sandy); nesse caso vale o Pokemon padrao da especie.
+  const varietyName = (species, formName) => (
+    species.varieties.some((variety) => variety.pokemon.name === formName) ? formName : defaultOf(species).name
+  );
+
+  // Cada regra da PokeAPI diz de qual forma parte e em qual forma resulta.
+  const chainEdges = (link, edges = []) => {
+    for (const next of link.evolves_to) {
+      for (const detail of next.evolution_details) {
+        edges.push({
+          from: varietyName(speciesOfLink(link), detail.required_pokemon_form?.name),
+          to: varietyName(speciesOfLink(next), detail.evolved_pokemon_form?.name),
+          next,
+          detail,
+        });
+      }
+      chainEdges(next, edges);
+    }
+    return edges;
+  };
+
+  // Monta a cadeia vista a partir de uma forma: so as formas e as regras que valem para ela.
+  const evolutionTreeFor = (pokemon, chain) => {
+    const edges = chainEdges(chain);
+    const species = speciesMap.get(idFromUrl(pokemon.species.url));
+    const baseName = defaultOf(species).name;
+    const isInChain = edges.some((edge) => edge.from === pokemon.name || edge.to === pokemon.name);
+    // Mega, Gigantamax e parecidas nao evoluem: aparecem no lugar da forma padrao, sem continuar a cadeia.
+    const standsIn = !pokemon.is_default && !isInChain;
+    const start = standsIn ? baseName : pokemon.name;
+
+    const lineage = new Set([start]);
+    let top = start;
+    for (let edge = edges.find((item) => item.to === top); edge; edge = edges.find((item) => item.to === top)) {
+      top = edge.from;
+      lineage.add(top);
+    }
+    if (speciesMap.get(idFromUrl(pokemonByName.get(top).species.url)).id !== speciesOfLink(chain).id) {
+      top = defaultOf(speciesOfLink(chain)).name;
+    }
+
+    const nodeFor = (name, how, link) => {
+      const shown = pokemonByName.get(name);
+      const shownSpecies = speciesOfLink(link);
+      const replaced = standsIn && name === start;
+      const display = replaced ? pokemon : shown;
+      return {
+        slug: display.name,
+        name: displayName(display, shownSpecies),
+        dexNumber: shownSpecies.id,
+        sprite: imagesOf(display, shownSpecies).sprite,
+        how,
+        evolvesTo: replaced ? [] : childrenOf(name, link),
+      };
     };
+
+    const childrenOf = (name, link) => link.evolves_to.flatMap((next) => {
+      const results = new Map();
+      for (const edge of edges) {
+        if (edge.next !== next || edge.from !== name) continue;
+        if (!results.has(edge.to)) results.set(edge.to, []);
+        results.get(edge.to).push(edge.detail);
+      }
+      // Na linha da forma aberta, mostra so o caminho dela, e nao as formas irmas.
+      const onLine = [...results.keys()].filter((to) => lineage.has(to));
+      const shownResults = onLine.length ? onLine : [...results.keys()];
+      return shownResults.map((to) => nodeFor(to, describeEvolutions(results.get(to)), next));
+    });
+
+    return nodeFor(top, [], chain);
   };
 
   const entries = [];
@@ -251,7 +312,7 @@ export function buildEntries({ store }) {
       flavorTexts: [...flavorTexts].map(([text, versions]) => ({ text, versions })),
       pokedexNumbers: species.pokedex_numbers.map((n) => ({ pokedex: titleize(n.pokedex.name), number: n.entry_number })),
       evolution: species.evolution_chain
-        ? evolutionNode(store['evolution-chain'].get(idFromUrl(species.evolution_chain.url)).chain)
+        ? evolutionTreeFor(pokemon, store['evolution-chain'].get(idFromUrl(species.evolution_chain.url)).chain)
         : null,
       varieties: species.varieties.map((variety) => {
         const other = pokemonByName.get(variety.pokemon.name);
