@@ -61,7 +61,7 @@ Enquanto esse `.env` existir, o `npm run dev` também usa o Neon. Para voltar ao
 ### 4. Publicar na Vercel
 
 1. Em <https://vercel.com/new>, importe o repositório `quest-wiki`.
-2. Em **Environment Variables**, adicione `DATABASE_URL` com a mesma string do Neon e `ADMIN_PASSWORD` com a senha da edição do mapa.
+2. Em **Environment Variables**, adicione `DATABASE_URL` com a mesma string do Neon.
 3. Clique em **Deploy**. As configurações de build já estão em `vercel.json`.
 
 ### 5. Conferir

@@ -287,7 +287,7 @@ export function PokemonPage() {
         </Section>
       )}
 
-      {pokemon.moves && (
+      {pokemon.moves?.rows.length > 0 && (
         <Section title="Golpes" className="panel--wide">
           <Moves key={pokemon.slug} moves={pokemon.moves} inherited={pokemon.movesInherited} />
         </Section>
@@ -308,13 +308,15 @@ export function PokemonPage() {
         )}
 
         <div className="panel-stack">
-          <Section title="Números regionais">
-            <ul className="regional">
-              {pokemon.pokedexNumbers.map((entry) => (
-                <li key={entry.pokedex}><span>{entry.pokedex}</span><strong>{entry.number}</strong></li>
-              ))}
-            </ul>
-          </Section>
+          {pokemon.pokedexNumbers.length > 0 && (
+            <Section title="Números regionais">
+              <ul className="regional">
+                {pokemon.pokedexNumbers.map((entry) => (
+                  <li key={entry.pokedex}><span>{entry.pokedex}</span><strong>{entry.number}</strong></li>
+                ))}
+              </ul>
+            </Section>
+          )}
 
           {pokemon.encounters.length > 0 && (
             <Section title="Onde encontrar">

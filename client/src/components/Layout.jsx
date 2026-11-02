@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import { ROLES, isStaff } from '../../../shared/roles.js';
+import { useAuth } from '../auth.jsx';
 
 const STORAGE_KEY = 'quest-wiki:sidebar-collapsed';
 
@@ -38,6 +40,42 @@ function MapIcon() {
   );
 }
 
+function UsersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.9c1.6.9 2.6 2.6 3 5.1" />
+    </svg>
+  );
+}
+
+function UserBar() {
+  const { user, loading, logout } = useAuth();
+  const { pathname } = useLocation();
+
+  if (loading) return <div className="user-bar" />;
+
+  if (!user) {
+    const next = pathname === '/entrar' || pathname === '/cadastro' ? '' : `?next=${encodeURIComponent(pathname)}`;
+    return (
+      <div className="user-bar">
+        <Link className="user-action" to={`/entrar${next}`}>Entrar</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="user-bar">
+      <span className="user-avatar" aria-hidden="true">{user.username.charAt(0).toUpperCase()}</span>
+      <span className="user-text">
+        <span className="user-name">{user.username}</span>
+        <span className="user-role">{ROLES[user.role]}</span>
+      </span>
+      <button type="button" className="user-action" onClick={logout}>Sair</button>
+    </div>
+  );
+}
+
 function ChevronIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -58,6 +96,7 @@ export function Layout() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
@@ -72,11 +111,12 @@ export function Layout() {
     <div className={`shell${collapsed ? ' shell--collapsed' : ''}${mobileOpen ? ' shell--mobile-open' : ''}`}>
       <ScrollRestoration />
 
-      <header className="mobile-bar">
-        <button type="button" className="icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu">
+      <header className="topbar">
+        <button type="button" className="icon-button topbar-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu">
           <MenuIcon />
         </button>
-        <span className="brand-name">Quest Wiki</span>
+        <span className="brand-name topbar-brand">Quest Wiki</span>
+        <UserBar />
       </header>
 
       <button type="button" className="scrim" aria-label="Fechar menu" tabIndex={mobileOpen ? 0 : -1} onClick={() => setMobileOpen(false)} />
@@ -96,6 +136,24 @@ export function Layout() {
             <MapIcon />
             <span className="nav-label">Mapa</span>
           </NavLink>
+
+          {isStaff(user) && (
+            <>
+              <p className="nav-heading">Área Administrativa</p>
+              <NavLink to="/admin/usuarios" className="nav-item" title="Usuários">
+                <UsersIcon />
+                <span className="nav-label">Usuários</span>
+              </NavLink>
+              <NavLink to="/admin/pokedex" className="nav-item" title="Administrar Pokédex">
+                <BallIcon />
+                <span className="nav-label">Pokédex</span>
+              </NavLink>
+              <NavLink to="/admin/mapa" className="nav-item" title="Administrar mapa">
+                <MapIcon />
+                <span className="nav-label">Mapa</span>
+              </NavLink>
+            </>
+          )}
         </nav>
 
         <button

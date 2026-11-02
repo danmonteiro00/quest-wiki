@@ -1,71 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MAP_AREAS } from '../../../shared/map-areas.js';
-import { forgetCached } from '../api.js';
-import { useApi } from '../useApi.js';
-
-const STORAGE_KEY = 'quest-wiki:admin-password';
-
-function readPassword() {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function savePassword(value) {
-  try {
-    if (value) sessionStorage.setItem(STORAGE_KEY, value);
-    else sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Sem armazenamento disponivel, a senha so vale ate recarregar a pagina.
-  }
-}
-
-async function adminFetch(path, password, options = {}) {
-  const response = await fetch(`/api/map/admin${path}`, {
-    ...options,
-    headers: { Authorization: `Bearer ${encodeURIComponent(password)}`, 'Content-Type': 'application/json' },
-  });
-  if (response.status === 204) return null;
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(body.error ?? `HTTP ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-  return body;
-}
+import { MAP_AREAS, findArea } from '../../../../shared/map-areas.js';
+import { forgetCached, request } from '../../api.js';
+import { ImageField } from '../../components/ImageField.jsx';
 
 const emptySection = () => ({ image: '', description: '', slots: 10, pokemon: [], resources: [] });
-
-function LoginForm({ onLogin }) {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState(null);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    try {
-      await adminFetch('', value);
-      onLogin(value);
-    } catch (failure) {
-      setError(failure.message);
-    }
-  };
-
-  return (
-    <form className="admin-login panel" onSubmit={submit}>
-      <h1>Editar mapa</h1>
-      <label className="field">
-        Senha do ADM
-        <input type="password" autoComplete="current-password" value={value} onChange={(event) => setValue(event.target.value)} required />
-      </label>
-      {error && <p className="notice notice--error">{error}</p>}
-      <button type="submit" className="button">Entrar</button>
-    </form>
-  );
-}
 
 function PokemonEditor({ slugs, options, onChange }) {
   const [value, setValue] = useState('');
@@ -148,10 +87,7 @@ function SectionEditor({ section, options, onChange }) {
 
   return (
     <div className="admin-section">
-      <label className="field">
-        Endereço da imagem
-        <input type="url" value={section.image} placeholder="https://..." onChange={(event) => set('image', event.target.value)} />
-      </label>
+      <ImageField label="Imagem do local" value={section.image} onChange={(image) => set('image', image)} />
       <label className="field">
         Descrição
         <textarea rows={4} value={section.description} onChange={(event) => set('description', event.target.value)} />
@@ -167,29 +103,23 @@ function SectionEditor({ section, options, onChange }) {
   );
 }
 
-function AreaEditor({ slug, password, options, onUnauthorized }) {
+function AreaEditor({ slug, options }) {
+  const area = findArea(slug);
   const [content, setContent] = useState(null);
   const [tab, setTab] = useState(0);
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
     let active = true;
-    setContent(null);
-    setTab(0);
-    setStatus(null);
-    adminFetch(`/${slug}`, password)
+    request(`/api/admin/map/${slug}`)
       .then((data) => active && setContent(data))
-      .catch((error) => {
-        if (!active) return;
-        if (error.status === 401) onUnauthorized();
-        else setStatus({ error: true, text: error.message });
-      });
+      .catch((error) => active && setStatus({ error: true, text: error.message }));
     return () => {
       active = false;
     };
-  }, [slug, password, onUnauthorized]);
+  }, [slug]);
 
-  if (!content) return status ? <p className="notice notice--error">{status.text}</p> : <p className="area-empty">Carregando…</p>;
+  if (!content) return status ? <p className="notice notice--error">{status.text}</p> : <p className="notice">Carregando…</p>;
 
   const edit = (next) => {
     setContent(next);
@@ -211,12 +141,11 @@ function AreaEditor({ slug, password, options, onUnauthorized }) {
   const save = async (event) => {
     event.preventDefault();
     try {
-      const saved = await adminFetch(`/${slug}`, password, { method: 'PUT', body: JSON.stringify(content) });
+      const saved = await request(`/api/admin/map/${slug}`, { method: 'PUT', body: content });
       forgetCached(`/api/map/${slug}`);
       setContent(saved);
       setStatus({ error: false, text: 'Salvo. O site público mostra a mudança em até 1 minuto.' });
     } catch (error) {
-      if (error.status === 401) return onUnauthorized();
       setStatus({ error: true, text: error.message });
     }
   };
@@ -225,6 +154,12 @@ function AreaEditor({ slug, password, options, onUnauthorized }) {
 
   return (
     <form onSubmit={save} className="panel admin-form">
+      <label className="field">
+        Nome da área
+        <input value={content.name} placeholder={area.name} maxLength={80} onChange={(event) => edit({ ...content, name: event.target.value })} />
+      </label>
+      <p className="admin-note">O nome aparece no quadro lateral. O que está escrito no desenho do mapa não muda.</p>
+
       <div className="tabs" role="tablist" aria-label="Sub-áreas">
         <button type="button" role="tab" aria-selected={tab === 0} className={tab === 0 ? 'is-active' : ''} onClick={() => setTab(0)}>Geral</button>
         {content.subareas.map((item, index) => (
@@ -265,35 +200,19 @@ function AreaEditor({ slug, password, options, onUnauthorized }) {
   );
 }
 
-export function MapAdminPage() {
-  const [password, setPassword] = useState(readPassword);
+export function AdminMapPage() {
   const [slug, setSlug] = useState(MAP_AREAS[0].slug);
-  const { data: pokemon } = useApi('/api/pokemon');
+  const [pokemon, setPokemon] = useState([]);
 
-  const logout = useCallback(() => {
-    savePassword('');
-    setPassword('');
+  useEffect(() => {
+    request('/api/admin/pokedex').then(setPokemon).catch(() => setPokemon([]));
   }, []);
 
-  if (!password) {
-    return (
-      <LoginForm
-        onLogin={(value) => {
-          savePassword(value);
-          setPassword(value);
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--narrow">
       <header className="page-header">
-        <h1>Editar mapa</h1>
-        <div className="admin-links">
-          <Link to={`/mapa/${slug}`}>Ver no mapa</Link>
-          <button type="button" className="button button--quiet" onClick={logout}>Sair</button>
-        </div>
+        <h1>Mapa</h1>
+        <Link className="admin-links" to={`/mapa/${slug}`}>Ver no mapa</Link>
       </header>
 
       <label className="field admin-select">
@@ -304,10 +223,10 @@ export function MapAdminPage() {
       </label>
 
       <datalist id="admin-pokemon">
-        {pokemon?.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+        {pokemon.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
       </datalist>
 
-      <AreaEditor key={slug} slug={slug} password={password} options={pokemon ?? []} onUnauthorized={logout} />
+      <AreaEditor key={slug} slug={slug} options={pokemon} />
     </div>
   );
 }

@@ -1,8 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration } from 'react-router-dom';
+import { AuthProvider } from './auth.jsx';
 import { Layout } from './components/Layout.jsx';
-import { MapAdminPage } from './pages/MapAdminPage.jsx';
+import { AdminMapPage } from './pages/admin/AdminMapPage.jsx';
+import { AdminPokedexPage } from './pages/admin/AdminPokedexPage.jsx';
+import { AdminPokemonFormPage } from './pages/admin/AdminPokemonFormPage.jsx';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage.jsx';
+import { RequireStaff } from './pages/admin/RequireStaff.jsx';
+import { LoginPage, RegisterPage } from './pages/AuthPages.jsx';
 import { MapPage } from './pages/MapPage.jsx';
 import { PokedexPage } from './pages/PokedexPage.jsx';
 import { PokemonPage } from './pages/PokemonPage.jsx';
@@ -19,9 +25,22 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/pokedex" replace /> },
       { path: 'pokedex', children: dexRoutes },
-      { path: 'mapa/admin', element: <MapAdminPage /> },
       // Parametro opcional em uma rota so: trocar de area nao recria o mapa nem perde o zoom.
       { path: 'mapa/:slug?', element: <MapPage /> },
+      { path: 'entrar', element: <LoginPage /> },
+      { path: 'cadastro', element: <RegisterPage /> },
+      {
+        path: 'admin',
+        element: <RequireStaff />,
+        children: [
+          { index: true, element: <Navigate to="usuarios" replace /> },
+          { path: 'usuarios', element: <AdminUsersPage /> },
+          { path: 'pokedex', element: <AdminPokedexPage /> },
+          { path: 'pokedex/novo', element: <AdminPokemonFormPage /> },
+          { path: 'pokedex/:slug', element: <AdminPokemonFormPage /> },
+          { path: 'mapa', element: <AdminMapPage /> },
+        ],
+      },
     ],
   },
   {
@@ -40,6 +59,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 );

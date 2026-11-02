@@ -1,11 +1,21 @@
 import { mkdirSync } from 'node:fs';
+import { APP_SCHEMA } from './app-schema.js';
 
 let dbPromise;
 
 // Mesma interface nos dois casos: Postgres real (Neon) ou PGlite local, sem instalar nada.
 export function getDb() {
-  dbPromise ??= process.env.DATABASE_URL ? connectPostgres() : connectPglite();
+  dbPromise ??= connect().catch((error) => {
+    dbPromise = undefined;
+    throw error;
+  });
   return dbPromise;
+}
+
+async function connect() {
+  const db = await (process.env.DATABASE_URL ? connectPostgres() : connectPglite());
+  await db.exec(APP_SCHEMA);
+  return db;
 }
 
 async function connectPostgres() {

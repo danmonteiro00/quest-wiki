@@ -79,7 +79,7 @@ export function AreaPanel({ area, onClose }) {
       <header className="area-header">
         <div>
           <p className="area-kind">{KIND_LABELS[area.kind]}</p>
-          <h2>{area.name}</h2>
+          <h2>{data?.name ?? area.name}</h2>
         </div>
         <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar quadro">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">

@@ -59,7 +59,7 @@ function genderLabel(rate) {
   return `${100 - female}% male / ${female}% female`;
 }
 
-function typeMatchups(types, attackers) {
+export function typeMatchups(types, attackers) {
   const result = {};
   for (const attacker of attackers) {
     let multiplier = 1;

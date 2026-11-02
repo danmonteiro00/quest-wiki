@@ -5,6 +5,7 @@ import { createGunzip } from 'node:zlib';
 import tar from 'tar-stream';
 import { getDb } from '../db.js';
 import { buildEntries, createCollector } from './build-entries.js';
+import { applyOverrides } from '../pokedex-store.js';
 
 // O repositorio oficial traz a API inteira em um unico arquivo, em vez de ~15 mil requisicoes.
 const TARBALL_URL = 'https://codeload.github.com/PokeAPI/api-data/tar.gz/refs/heads/master';
@@ -103,7 +104,8 @@ await db.transaction(async (tx) => {
   const total = await importResources(tx, collector);
   const entries = buildEntries(collector);
   await insertEntries(tx, entries);
-  console.log(`Concluido: ${total} recursos da PokeAPI, ${entries.length} entradas na Pokedex`);
+  const overrides = await applyOverrides(tx);
+  console.log(`Concluido: ${total} recursos da PokeAPI, ${entries.length} entradas na Pokedex, ${overrides} edicoes reaplicadas`);
 });
 
 const { rows } = await db.query(`

@@ -17,14 +17,3 @@ CREATE TABLE IF NOT EXISTS pokedex_entry (
   detail json NOT NULL
 );
 CREATE INDEX IF NOT EXISTS pokedex_entry_order_idx ON pokedex_entry (dex_number, id);
-
--- Reservado para o login (ainda nao implementado, ver server/routes/auth.js).
-CREATE TABLE IF NOT EXISTS app_user (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  username text NOT NULL UNIQUE,
-  email text UNIQUE,
-  password_hash text,
-  forum_user_id integer UNIQUE,
-  role text NOT NULL DEFAULT 'player',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
