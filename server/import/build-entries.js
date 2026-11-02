@@ -1,4 +1,5 @@
 import { genderFromPercent, parseGender } from '../../shared/gender.js';
+import { evolutionText } from './evolution-text.js';
 import { imagesFor } from './serebii.js';
 
 const titleize = (slug) => slug.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
@@ -90,6 +91,7 @@ function describeEvolution(detail) {
     if (EVOLUTION_HIDDEN.has(key) || value === null || value === false || value === '') continue;
     const label = key.replaceAll('_', ' ');
     if (value === true) parts.push(label);
+    else if (Array.isArray(value)) parts.push(`${label}: ${value.map((item) => titleize(item.name)).join(', ')}`);
     else if (typeof value === 'object') parts.push(`${label}: ${titleize(value.name ?? String(value))}`);
     else parts.push(`${label}: ${typeof value === 'string' ? titleize(value) : value}`);
   }
@@ -104,8 +106,8 @@ function describeEvolutions(details) {
     if (!rules.has(rule)) rules.set(rule, new Set());
     if (detail.location) rules.get(rule).add(titleize(detail.location.name));
   }
-  return [...rules].map(([rule, locations]) => (
-    locations.size ? `${rule} · location: ${[...locations].join(', ')}` : rule
+  return [...rules].map(([rule, locations]) => evolutionText(
+    locations.size ? `${rule} · location: ${[...locations].join(', ')}` : rule,
   ));
 }
 
@@ -331,7 +333,7 @@ export function buildEntries({ store }, translate) {
       ...summary,
       speciesSlug: species.name,
       formName: english(form?.form_names)?.name ?? null,
-      genus: english(species.genera)?.genus ?? null,
+      genus: translate(english(species.genera)?.genus ?? null),
       height: pokemon.height / 10,
       weight: pokemon.weight / 10,
       baseExperience: pokemon.base_experience,

@@ -43,7 +43,6 @@ const CATALOGS = {
       { name: 'category', label: 'Categoria', kind: 'select', options: optionsOf(['physical', 'special', 'status']) },
       { name: 'power', label: 'Poder', type: 'number', min: 0, max: 999 },
       { name: 'accuracy', label: 'Precisão', type: 'number', min: 0, max: 100 },
-      { name: 'pp', label: 'PP', type: 'number', min: 0, max: 99 },
       { name: 'description', label: 'Descrição', kind: 'textarea' },
     ],
     columns: [

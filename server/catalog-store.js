@@ -60,8 +60,8 @@ export async function withEditedMoves(db, detail) {
   const patched = rows.map((row) => {
     const move = bySlug.get(row.slug);
     if (!move) return row;
-    const { name, type, category, power, accuracy, pp } = move;
-    return { ...row, name, type, category, power, accuracy, pp };
+    const { name, type, category, power, accuracy } = move;
+    return { ...row, name, type, category, power, accuracy };
   });
   return { ...detail, moves: { ...detail.moves, rows: patched } };
 }

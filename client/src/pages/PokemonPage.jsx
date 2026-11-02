@@ -129,7 +129,6 @@ function Moves({ moves, inherited }) {
               <th>Categoria</th>
               <th className="num">Poder</th>
               <th className="num">Prec.</th>
-              <th className="num">PP</th>
             </tr>
           </thead>
           <tbody>
@@ -141,7 +140,6 @@ function Moves({ moves, inherited }) {
                 <td>{row.category ? capitalize(row.category) : '—'}</td>
                 <td className="num">{row.power ?? '—'}</td>
                 <td className="num">{row.accuracy ?? '—'}</td>
-                <td className="num">{row.pp ?? '—'}</td>
               </tr>
             ))}
           </tbody>

@@ -33,7 +33,6 @@ function parseMove(raw) {
     category: raw?.category || null,
     power: number(raw?.power, 'Poder', { max: 999, required: false }),
     accuracy: number(raw?.accuracy, 'Precisão', { max: 100, required: false }),
-    pp: number(raw?.pp, 'PP', { max: 99, required: false }),
     description: text(raw?.description, 'Descrição', 2000),
   };
 }
@@ -74,8 +73,10 @@ function adminRouter(kind, parse, label) {
 
   router.put('/:slug', async (req, res) => {
     const db = await getDb();
-    if (!(await readCatalogEntry(db, kind, req.params.slug))) return res.status(404).json({ error: `${label} não encontrado` });
-    const entry = { slug: req.params.slug, ...parse(req.body) };
+    const current = await readCatalogEntry(db, kind, req.params.slug);
+    if (!current) return res.status(404).json({ error: `${label} não encontrado` });
+    // O que nao aparece no formulario, como o PP dos golpes, continua guardado.
+    const entry = { ...current, ...parse(req.body), slug: req.params.slug };
     await writeCatalogEntry(db, kind, entry);
     res.json(entry);
   });

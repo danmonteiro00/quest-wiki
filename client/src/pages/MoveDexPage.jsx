@@ -68,7 +68,6 @@ export function MoveDexPage() {
                 <th>Categoria</th>
                 <th className="num">Poder</th>
                 <th className="num">Prec.</th>
-                <th className="num">PP</th>
                 <th>Descrição</th>
               </tr>
             </thead>
@@ -80,7 +79,6 @@ export function MoveDexPage() {
                   <td>{move.category ? capitalize(move.category) : '—'}</td>
                   <td className="num">{move.power ?? '—'}</td>
                   <td className="num">{move.accuracy ?? '—'}</td>
-                  <td className="num">{move.pp ?? '—'}</td>
                   <td className="move-description">{move.description || '—'}</td>
                 </tr>
               ))}

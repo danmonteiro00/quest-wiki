@@ -1,3 +1,5 @@
+import { evolutionText } from './import/evolution-text.js';
+
 const SUMMARY_FIELDS = [
   'id', 'slug', 'name', 'dexNumber', 'isDefault', 'types', 'stats', 'statTotal',
   'generation', 'isLegendary', 'isMythical', 'art',
@@ -37,11 +39,14 @@ export async function deleteEntry(tx, slug) {
 // Fichas salvas com dados antigos: fica so a arte, sem os locais da PokeAPI e com as descricoes traduzidas.
 // O sprite so continua se o Admin nao tiver cadastrado outra imagem, ate ele trocar pela arte.
 function refreshSaved(detail, translate) {
+  const refreshNode = (node) => ({ ...node, how: (node.how ?? []).map(evolutionText), evolvesTo: node.evolvesTo.map(refreshNode) });
   const { sprite = [], ...rest } = detail;
   const art = (detail.art ?? []).filter((url) => !url.includes('/pokedex-sv/icon/'));
   return {
     ...rest,
     art: art.length ? art : sprite,
+    genus: translate(detail.genus),
+    evolution: detail.evolution ? refreshNode(detail.evolution) : null,
     encounters: (detail.encounters ?? []).filter((encounter) => !encounter.versions?.length),
     flavorTexts: (detail.flavorTexts ?? []).map((entry) => ({ ...entry, text: translate(entry.text) })),
     abilities: (detail.abilities ?? []).map((ability) => ({ ...ability, effect: translate(ability.effect) })),

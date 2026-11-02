@@ -194,7 +194,7 @@ function MovesEditor({ moves, onChange }) {
           <table className="admin-table admin-moves">
             <thead>
               <tr>
-                <th>Golpe</th><th>Como</th><th>Nv.</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Prec.</th><th>PP</th><th />
+                <th>Golpe</th><th>Como</th><th>Nv.</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Prec.</th><th />
               </tr>
             </thead>
             <tbody>
@@ -238,7 +238,6 @@ function MovesEditor({ moves, onChange }) {
                   </td>
                   <td><input aria-label="Poder" type="number" min="0" value={blank(move.power)} onChange={(event) => update(index, { power: event.target.value })} /></td>
                   <td><input aria-label="Precisão" type="number" min="0" max="100" value={blank(move.accuracy)} onChange={(event) => update(index, { accuracy: event.target.value })} /></td>
-                  <td><input aria-label="PP" type="number" min="0" value={blank(move.pp)} onChange={(event) => update(index, { pp: event.target.value })} /></td>
                   <td>
                     <button type="button" className="button button--quiet" aria-label={`Remover ${move.name || 'golpe'}`} onClick={() => onChange(moves.filter((_, i) => i !== index))}>×</button>
                   </td>

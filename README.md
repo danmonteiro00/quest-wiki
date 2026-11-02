@@ -57,7 +57,7 @@ As imagens vêm direto do Serebii. Quando a forma não tem arte própria, a pág
 
 ## Traduções
 
-As descrições ficam em [server/import/translations/](server/import/translations/), em dicionários de texto em inglês para texto em português. O que não está no dicionário continua em inglês. Nomes de Pokémon, habilidades, golpes, itens e tipos não são traduzidos. Depois de mudar um dicionário, rode `npm run db:import`.
+As descrições ficam em [server/import/translations/](server/import/translations/), em dicionários de texto em inglês para texto em português. O que não está no dicionário continua em inglês. Nomes de Pokémon, habilidades, golpes, itens e tipos não são traduzidos. Os métodos de evolução são montados em [server/import/evolution-text.js](server/import/evolution-text.js). Depois de mudar um dicionário, rode `npm run db:import`.
 
 ## Item DEX, Move DEX e Sorteios
 
